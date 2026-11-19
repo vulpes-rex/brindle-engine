@@ -46,9 +46,12 @@
         ["open", [["Elder Maren", "The door is open. When you are ready, we go down together."]]],
         ["key", [["Elder Maren", "You found the key? Then up the steps and east, under the bluff. Mind yourself."]]],
         [null, [
-          { "set": "asked" },
           ["Elder Maren", "A traveller! Good. The sealed door under the bluff has begun to hum, and I am too old to go poking at it."],
-          ["Elder Maren", "The miller hid its brass key in a chest beyond the pond, years ago. If you find it, would you take a look?"]
+          ["Elder Maren", "The miller hid its brass key in a chest beyond the pond, years ago. If you find it, would you take a look?"],
+          { "choose": [
+            ["I'll find the key.", [{ "set": "asked" }, ["Elder Maren", "Bless you. Look beyond the pond, where the trees grow thick."]]],
+            ["Not just now.", [["Elder Maren", "Of course. I will be by the well when you change your mind."]]]
+          ] }
         ]]
       ] }
     ],

@@ -48,9 +48,11 @@ engine/            the runtime; plain ES modules, no dependencies
   look-ink.js      the "ink" look and its shaders (shaders-ink.js)
   gen/             the scene generator used by the gen look, and the kit of shapes scenes are built with
   monsters.js      decoding and skinning of baked monsters
+  menu.js          the field menu: items, the party, saving
+  icons.js         the little pixel-art icons the menus use
   png.js, gl.js, ui.js
 game/              one game: data and art only
-  game.json        party, starting place, items, which packs to fetch
+  game.json        party, starting place, items (name, heal, about), which packs to fetch
   areas/*.json     an area: its look, people, things, exits, hints and scripts
   scenes/*.js      the generated scenes the gen areas are built from
   heroes.json, skills.json, monsters.json, foe-actions.json, battles.json
@@ -117,10 +119,15 @@ A script is a list of steps:
 | `{"give": "item", "n": 2}` | add to (or with a negative `n`, take from) what the party carries |
 | `{"battle": "id"}` | fight; the battle's own `won` / `lost` script runs afterwards |
 | `{"go": "area", "at": "spawn"}` | travel to another area |
+| `{"choose": [["Answer", script], ["Answer", script, cond]]}` | ask: the line just before is the question and stays up while the answers are offered; each answer runs its own script, and one with a condition is offered only while it holds |
 | `{"stop": true}` | end the script |
 
 A condition is a flag (`"key"`), its negation (`"!key"`), `{"all": [...]}`, `{"any": [...]}` or `{"has": "item", "n": 1}`.
 The engine sets one flag itself: `moved`, the first time the leader walks.
+
+The Menu button (or M, or Esc) opens the field menu over the picture, in the same blue windows as the battles, and the
+world holds still while it is open. It shows what the party carries (an item's `about`, or what it heals), each hero's
+portrait, stats and skills (a skill's `about`, or whom it aims at), and saves.
 
 Battles are data too. A skill or foe action is a move plus timed hits:
 
@@ -188,7 +195,9 @@ no ground, holds an obstacle, or steps too far to its neighbour.
 
 ## What is not here yet
 
-- No menus, inventory screen, choices in dialogue, shops or sound.
+- No shops or sound.
+- Items can only be used in battle: HP and MP are full again at the start of every fight, so there is nothing to mend
+  in the field.
 - Battles are only drawn by the gen look; monsters are not drawn in ink areas.
 - The ink look redraws every dab whenever the camera moves; it has no culling yet.
 - One save slot.

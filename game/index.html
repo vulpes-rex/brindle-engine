@@ -18,11 +18,15 @@ header span{font-size:13px;color:var(--dim)}
 #cv.smooth{image-rendering:auto}
 #load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(9,14,20,.9);font-size:17px;line-height:1.4}
 #load.off{display:none}
-#dlg{position:absolute;left:8px;right:8px;bottom:8px;padding:10px 12px 14px;background:var(--box);border:2px solid var(--boxline);box-shadow:0 0 0 2px #0a0f20;min-height:84px;font-size:16px;line-height:1.35;cursor:pointer}
+#dlg{position:absolute;left:8px;right:8px;bottom:8px;padding:10px 12px 14px;min-height:84px;font-size:16px;line-height:1.35;cursor:pointer}
 #dlg.off{display:none}
 #who{color:var(--glow);font-weight:600;margin-bottom:3px;min-height:0}
 #say{margin:0;white-space:pre-wrap}
 #more{position:absolute;right:10px;bottom:3px;font-size:12px;color:var(--boxline);animation:bob 0.9s steps(2) infinite}
+#dlg.ask{cursor:default}
+#dlg.ask #more{display:none}
+#cho{position:absolute;right:-2px;bottom:100%;margin-bottom:10px;min-width:48%;max-width:85%;padding:4px 6px;display:flex;flex-direction:column}
+#cho.off{display:none}
 @keyframes bob{50%{transform:translateY(3px)}}
 #cred{margin:2px 0 0;font-size:11px;line-height:1.3;color:#6f8582}
 #hint{margin:0;min-height:2.6em;font-size:14px;line-height:1.3;color:var(--dim)}
@@ -73,16 +77,35 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 #bcmd:empty{visibility:hidden}
 #bcmd.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:5px}
 #bcmd.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));padding:4px 6px}
-#bcmd button{font:inherit;color:#fff;text-shadow:inherit;background:transparent;border:2px solid transparent;border-radius:4px;min-height:0;cursor:pointer}
-#bcmd button:hover,#bcmd button:focus-visible{border-color:var(--glow);background:rgba(255,255,255,.08);outline:none}
-#bcmd button:active{background:rgba(255,232,150,.18)}
-#bcmd button:disabled{opacity:.4;border-color:transparent;background:transparent}
+.gs button{font:inherit;color:#fff;text-shadow:inherit;background:transparent;border:2px solid transparent;border-radius:4px;min-height:0;cursor:pointer}
+.gs button:hover,.gs button:focus-visible,#cho button:focus{border-color:var(--glow);background:rgba(255,255,255,.08);outline:none}
+.gs button:active{background:rgba(255,232,150,.18)}
+.gs button:disabled{opacity:.4;border-color:transparent;background:transparent}
 .tile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px 5px;font-size:13px}
 .tile svg{width:36px;height:36px;filter:drop-shadow(1px 1px 0 #0a0f30)}
 .row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px 7px 24px;min-height:40px;font-size:15px;text-align:left}
 .row::before{content:'\25B6';position:absolute;left:7px;font-size:11px;color:var(--glow);opacity:0}
 .row:hover::before,.row:focus-visible::before{opacity:1}
 .row small{color:#a8c4ff;font-size:12px}
+.gs .row.sel,.gs .tile.on,.gs .chip.sel{border-color:var(--glow);background:rgba(255,255,255,.1)}
+.row.sel::before,#cho .row:focus::before{opacity:1}
+/* the field menu: tabs, a page, and a line about what is picked, over the dimmed picture */
+#menu{position:absolute;inset:0;display:flex;flex-direction:column;gap:7px;padding:8px;background:rgba(4,8,22,.5)}
+#menu.off{display:none}
+.mtabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px}
+.mtabs .tile svg{width:28px;height:28px}
+.mskills .row{min-height:31px;padding-top:3px;padding-bottom:3px}
+.mbody{flex:0 1 auto;min-height:0;overflow:auto;padding:5px 6px}
+.mbody .row{width:100%}
+.mnote{min-height:2.8em;padding:6px 10px;font-size:14px;line-height:1.3}
+.mnone{margin:8px 6px;color:#c8d4ff}
+.mwho{display:flex;gap:4px;margin-bottom:3px}
+.chip{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 2px 2px;font-size:13px}
+.face{display:block;width:48px;height:40px;image-rendering:pixelated}
+.mstat{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:1px 12px;padding:2px 4px 6px;font-size:12px}
+.mstat span{display:flex;justify-content:space-between}
+.mstat i{font-style:normal;color:#a8c4ff}
+.mskills{border-top:1px solid rgba(160,190,255,.35);padding-top:4px}
 @media (prefers-reduced-motion:reduce){#more{animation:none}.cur{animation:none}}
 </style>
 </head>
@@ -92,13 +115,14 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 <div id="stage"><canvas id="cv"></canvas>
 <div id="ov"></div>
 <div id="bparty"></div>
-<div id="dlg" class="off" role="dialog" aria-live="polite"><div id="who"></div><p id="say"></p><div id="more">&#9660;</div></div>
+<div id="dlg" class="gs off" role="dialog" aria-live="polite"><div id="cho" class="gs off"></div><div id="who"></div><p id="say"></p><div id="more">&#9660;</div></div>
+<div id="menu" class="off" role="dialog" aria-label="Menu"></div>
 <div id="fade"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="title" class="off"><p id="tmsg"></p><div id="tbtn"></div></div>
 <div id="load" role="status">Preparing&hellip;</div></div>
 <p id="hint"></p>
-<div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="sv">Save</button></div>
+<div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="mn" aria-label="Open the menu">Menu</button></div>
 <div id="bp" class="off"><div id="bmsg" class="gs" role="status" aria-live="polite"></div><div id="bcmd" class="gs"></div></div>
 <p id="cred">Lighthouse rock and the monsters were sculpted with Ink Studio by Silicon Jungle (MIT licence), then baked to data that this page draws itself.</p>
 </main>

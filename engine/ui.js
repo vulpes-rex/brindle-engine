@@ -1,13 +1,15 @@
-// The page around the picture: loading text, the dialogue box, the hint line, fades, the little "Saved" note and the
-// start-up choice. Everything that touches the DOM outside the battle panel lives here.
+// The page around the picture: loading text, the dialogue box and its choices, the hint line, fades, the little "Saved"
+// note and the start-up choice. Everything that touches the DOM outside the battle panel and the field menu lives here.
+import { row } from './icons.js';
 
 export function createUI(doc) {
   const $ = id => doc.getElementById(id),
-    el = { cv: $('cv'), stage: $('stage'), load: $('load'), dlg: $('dlg'), who: $('who'), say: $('say'), hint: $('hint'), opts: $('opts'), ov: $('ov'), fade: $('fade'), toast: $('toast'), title: $('title'), tmsg: $('tmsg'), tbtn: $('tbtn'), sub: $('sub') };
+    el = { cv: $('cv'), stage: $('stage'), load: $('load'), dlg: $('dlg'), who: $('who'), say: $('say'), cho: $('cho'), hint: $('hint'), opts: $('opts'), ov: $('ov'), fade: $('fade'), toast: $('toast'), title: $('title'), tmsg: $('tmsg'), tbtn: $('tbtn'), sub: $('sub') };
   let queue = null,
     qi = 0,
     typed = 0,
     after = null,
+    asking = null, // { cb, shown }: a choice under the line on show
     toastT = 0;
   const show = () => {
     const [who] = queue[qi];
@@ -31,6 +33,7 @@ export function createUI(doc) {
       window.__err = text;
     },
     talking: () => !!queue,
+    asking: () => !!(asking && asking.shown),
     // show lines ([who, text] each) one at a time; cb when the last is dismissed
     say(lines, cb) {
       if (!lines.length) return cb && cb();
@@ -41,6 +44,44 @@ export function createUI(doc) {
       el.dlg.classList.remove('off');
       show();
     },
+    // a question (a line, or null) with answers under it; cb(index of the answer)
+    ask(q, answers, cb) {
+      queue = [q || ['', '']];
+      qi = 0;
+      typed = 0;
+      after = null;
+      asking = { cb, shown: false };
+      el.cho.innerHTML = answers.map((a, k) => row('data-k="' + k + '"', a)).join('');
+      el.dlg.classList.add('ask');
+      el.dlg.classList.remove('off');
+      show();
+    },
+    // the answers come up once the question has been typed out
+    offer() {
+      asking.shown = true;
+      el.cho.classList.remove('off');
+      const b = el.cho.querySelector('button');
+      if (b) b.focus({ preventScroll: true });
+    },
+    pick(k) {
+      if (!asking || !asking.shown) return;
+      const cb = asking.cb;
+      asking = queue = null;
+      el.cho.classList.add('off');
+      el.dlg.classList.remove('ask');
+      el.dlg.classList.add('off');
+      cb(k);
+    },
+    // keys while answering: up and down move between the answers, Enter or Space takes one. True if the key was used.
+    key(k) {
+      if (!asking || !asking.shown) return false;
+      const bs = [...el.cho.querySelectorAll('button')],
+        i = bs.indexOf(doc.activeElement);
+      if (k === 'ArrowDown' || k === 'ArrowUp') bs[(Math.max(i, 0) + (k === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length].focus();
+      else if (k === 'Enter' || k === ' ') ui.pick(Math.max(i, 0));
+      else return false;
+      return true;
+    },
     // a tap: finish the line that is typing, or move on
     advance() {
       if (!queue) return;
@@ -48,8 +89,10 @@ export function createUI(doc) {
       if (typed < full.length) {
         typed = full.length;
         el.say.textContent = full;
+        if (asking) ui.offer();
         return;
       }
+      if (asking) return;
       qi++;
       if (qi >= queue.length) {
         queue = null;
@@ -69,6 +112,7 @@ export function createUI(doc) {
         typed = Math.min(full.length, typed + dt * 46);
         el.say.textContent = full.slice(0, Math.floor(typed));
       }
+      if (asking && !asking.shown && typed >= full.length) ui.offer();
     },
     hint(text) {
       el.hint.textContent = text || '';
@@ -120,5 +164,9 @@ export function createUI(doc) {
       return [r.left - s.left - el.stage.clientLeft + (p[0] * 0.5 + 0.5) * r.width, r.top - s.top - el.stage.clientTop + (0.5 - p[1] * 0.5) * r.height];
     }
   };
+  el.cho.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) ui.pick(+b.dataset.k);
+  });
   return ui;
 }

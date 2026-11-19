@@ -14,6 +14,7 @@
 // whatever they act on; Psynergy dims the scene and plays out in light.
 import { facing } from './field.js';
 import { createFx } from './fx.js';
+import { tile, row } from './icons.js';
 
 const TILT = 0.36, // the battle camera: lower than the field's,
   PERSP = 1 / 70, // with some perspective,
@@ -160,36 +161,12 @@ export function createBattle(g) {
     $('bparty').innerHTML = h;
   }
 
-  // the command icons, as pixel art: one character a pixel, '.' clear
-  const INK = { k: '#1a1430', w: '#fff', s: '#c8d4e8', y: '#ffd860', b: '#8a5a3a', p: '#c49cff', c: '#8ff0ff', g: '#6ee08a', G: '#2f9a58', B: '#6aa8ff', N: '#2c4ab0' },
-    ICON = {
-      attack: ['..........kk', '.........kwk', '........kwsk', '.......kwsk.', '......kwsk..', '..kk.kwsk...', '..kykwsk....', '...kysk.....', '..kbkyyk....', '.kbk.kyk....', 'kbk...kk....', 'kk..........'],
-      skill: ['.....k.....', '....kck....', '....kck....', '...kpwpk...', '.kkpwwwpkk.', 'kcwwwwwwwck', '.kkpwwwpkk.', '...kpwpk...', '....kck....', '....kck....', '.....k.....'],
-      item: ['...kkkkk...', '...kbbbk...', '....ksk....', '....ksk....', '...kswsk...', '..kgwgggk..', '.kgggggggk.', '.kgGgggggk.', '.kgGGgggGk.', '..kGGGGGk..', '...kkkkk...'],
-      guard: ['kkkkkkkkkkk', 'kBBBBwBBBNk', 'kBBBBwBBBNk', 'kBBBBwBBBNk', 'kwwwwywwwwk', 'kBBBBwBBBNk', '.kBBBwBBNk.', '.kBBBwBBNk.', '..kBBwBNk..', '...kBwNk...', '....kkk....']
-    },
-    svg = rows => {
-      let r = '';
-      rows.forEach((line, y) => {
-        for (let x = 0; x < line.length; ) {
-          const c = line[x];
-          let n = 1;
-          while (line[x + n] === c) n++;
-          if (c !== '.') r += '<rect x="' + x + '" y="' + y + '" width="' + n + '" height="1" fill="' + INK[c] + '"/>';
-          x += n;
-        }
-      });
-      return '<svg viewBox="0 0 ' + rows[0].length + ' ' + rows.length + '" shape-rendering="crispEdges" aria-hidden="true">' + r + '</svg>';
-    },
-    tile = (c, label, off) => '<button class="tile" data-c="' + c + '"' + (off ? ' disabled' : '') + '>' + svg(ICON[c]) + '<span>' + label + '</span></button>',
-    row = (attr, label, note, off) => '<button class="row" ' + attr + (off ? ' disabled' : '') + '><span>' + label + '</span>' + (note ? '<small>' + note + '</small>' : '') + '</button>';
-
   function menu(kind) {
     B.menu = kind;
     const u = B.cur,
       tonic = g.items.tonic || 0;
     let h = '';
-    if (kind === 'root') h = tile('attack', 'Attack') + tile('skill', 'Skill') + tile('item', 'Tonic ×' + tonic, !tonic) + tile('guard', 'Guard');
+    if (kind === 'root') h = tile('attack', 'data-c="attack"', 'Attack') + tile('skill', 'data-c="skill"', 'Skill') + tile('item', 'data-c="item"', 'Tonic ×' + tonic, !tonic) + tile('guard', 'data-c="guard"', 'Guard');
     else if (kind === 'skill') {
       for (const s of u.skills) h += row('data-s="' + s.id + '"', s.name, s.mp + ' MP', u.mp < s.mp);
       h += row('data-c="back"', 'Back');

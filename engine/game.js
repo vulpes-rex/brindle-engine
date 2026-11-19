@@ -8,6 +8,7 @@ import { GenLook } from './look-gen.js';
 import { InkLook } from './look-ink.js';
 import { createField } from './field.js';
 import { createBattle } from './battle.js';
+import { createMenu } from './menu.js';
 import { runScript, test } from './script.js';
 import { SaveStore } from './save.js';
 import { decodeMonster } from './monsters.js';
@@ -152,6 +153,7 @@ export function start(content) {
       unsaved = true;
     },
     say: (lines, cb) => ui.say(lines, cb),
+    choose: (q, answers, cb) => ui.ask(q, answers, cb),
     battle: (id, cb) => g.battle.start(id, cb),
     go: (id, at, cb) => travel(id, at, cb)
   };
@@ -220,7 +222,7 @@ export function start(content) {
     ui.type(dt);
     stepAnims(dt);
     if (g.mode === 'battle') g.battle.update(dt);
-    else {
+    else if (!g.menu.open) {
       g.field.update(dt);
       sinceSave += dt;
       if (sinceSave > 12 && !g.busy) save(false);
@@ -239,16 +241,17 @@ export function start(content) {
 
   g.field = createField(g);
   g.battle = createBattle(g);
+  g.menu = createMenu(g, save);
 
   // ---- input
   const tap = (nx, ny) => {
-    if (!live) return;
+    if (!live || g.menu.open) return;
     if (ui.talking()) return ui.advance();
     if (g.mode === 'battle') g.battle.tap(nx, ny);
     else if (!g.busy) g.field.tap(nx, ny);
   };
   const rot = d => {
-    if (live && g.mode === 'field') g.cam.yawT += (d * Math.PI) / 4;
+    if (live && g.mode === 'field' && !g.menu.open) g.cam.yawT += (d * Math.PI) / 4;
   };
   let pd = null;
   const ndc = e => {
@@ -257,7 +260,7 @@ export function start(content) {
   };
   stage.addEventListener('pointerdown', e => {
     // (buttons laid over the stage keep their own clicks: capturing the pointer would take them away)
-    if (e.target.closest('button')) return;
+    if (e.target.closest('button, #menu')) return;
     pd = { x: e.clientX, y: e.clientY, id: e.pointerId };
     try {
       stage.setPointerCapture(e.pointerId);
@@ -281,8 +284,10 @@ export function start(content) {
   stage.addEventListener('pointercancel', () => (pd = null));
   $('rl').addEventListener('click', () => rot(-1));
   $('rr').addEventListener('click', () => rot(1));
-  $('sv').addEventListener('click', () => {
-    if (live && !save(true) && (g.mode !== 'field' || g.busy)) ui.toast('Not just now');
+  $('mn').addEventListener('click', () => {
+    if (!live) return;
+    if (g.menu.open) g.menu.hide();
+    else if (!g.menu.show()) ui.toast('Not just now');
   });
   $('px').addEventListener('click', () => {
     if (!g.look || !g.look.canSmooth) return;
@@ -293,6 +298,12 @@ export function start(content) {
     g.look.setPixel(pixel);
   });
   window.addEventListener('keydown', e => {
+    if (ui.key(e.key)) return e.preventDefault(); // answering a question
+    if (e.key === 'Escape' || e.key === 'm') {
+      if (live && g.mode === 'field') g.menu.toggle();
+      return;
+    }
+    if (g.menu.open) return; // (the menu's own buttons take Enter and Space)
     if (e.key === ' ' || e.key === 'Enter') {
       if (ui.talking()) {
         ui.advance();

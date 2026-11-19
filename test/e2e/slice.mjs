@@ -43,9 +43,11 @@ const until = async (expr, secs = 30) => {
   }
   return false;
 };
-const talkThrough = async () => {
+// read every line; a question is answered by tapping its first answer (or the one given)
+const talkThrough = async (answer = 0) => {
   for (let i = 0; i < 40 && (await pg.evaluate(() => window.__game.info().talking)); i++) {
-    await pg.evaluate(() => (window.__game.ui.advance(), window.__game.ui.advance()));
+    if (await pg.evaluate(() => window.__game.ui.asking())) await pg.click('#cho button[data-k="' + answer + '"]');
+    else await pg.evaluate(() => (window.__game.ui.advance(), window.__game.ui.advance()));
     await pg.waitForTimeout(30);
   }
 };
@@ -70,13 +72,29 @@ await pg.evaluate(() => window.__game.step(1.5));
 const j = await info();
 ok(Math.hypot(j.x - i.x, j.z - i.z) > 3 && j.flags.includes('moved'), 'tapping the ground walks there (' + Math.hypot(j.x - i.x, j.z - i.z).toFixed(1) + ' units)');
 
-// talk to the elder: sets the first quest flag and saves
+// talk to the elder: she asks; "Not just now" leaves the quest alone, "I'll find the key" takes it, and that is saved
 ok(await use('actors', 'elder'), 'the leader walks up to the elder and a conversation opens');
-await shot('2-elder');
-await talkThrough();
+await talkThrough(1);
 i = await info();
-ok(i.flags.includes('asked') && !i.busy, 'the elder’s script set its flag and ended');
+ok(!i.flags.includes('asked') && !i.busy, 'turning the elder down sets nothing');
+ok(await use('actors', 'elder'), 'she asks again');
+for (let k = 0; k < 10 && !(await pg.evaluate(() => window.__game.ui.asking())); k++) await pg.evaluate(() => (window.__game.ui.advance(), window.__game.step(0.5)));
+ok(await pg.evaluate(() => [...document.querySelectorAll('#cho button')].map(b => b.textContent).join('|') === "I'll find the key.|Not just now."), 'her question comes with two answers');
+await shot('2-elder');
+await talkThrough(0);
+i = await info();
+ok(i.flags.includes('asked') && !i.busy, 'taking the quest set its flag and the script ended');
 ok(await pg.evaluate(() => { const s = window.__game.store.load(); return !!s && s.flags.asked === true && s.area === 'brindlebrook'; }), 'that was saved');
+
+// the field menu: what the party carries and who they are, with the world holding still meanwhile
+await pg.click('#mn');
+ok(await pg.evaluate(() => window.__game.menu.open && /Tonic\s*×3/.test(document.querySelector('#menu .mbody').innerText)), 'the menu opens on the items: three tonics');
+await pg.click('#menu [data-m="party"]');
+ok(await pg.evaluate(() => document.querySelectorAll('#menu .chip').length === 3 && document.querySelectorAll('#menu img.face').length === 3), 'the party page shows the three heroes');
+await shot('2b-menu');
+ok(await pg.evaluate(() => { const g = window.__game, h = g.field.hero, a = [h.x, h.z]; g.field.keys.ArrowUp = true; g.step(1); g.field.keys.ArrowUp = false; return h.x === a[0] && h.z === a[1]; }), 'nobody moves while it is open');
+await pg.keyboard.press('Escape');
+ok(await pg.evaluate(() => !window.__game.menu.open), 'Escape closes it');
 
 // the road: a door to the other area, drawn by the other look
 ok(await use('props', 'road'), 'the road by the south gate can be used');
