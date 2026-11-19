@@ -1,7 +1,7 @@
 // The engine's front door. start(content) takes a game (its data and its sprite sheet) and runs it: it loads areas through
 // whichever look each one asks for, switches between walking and fighting, runs scripts, saves, and drives the frame loop.
 //
-// content: { game, areas, heroes, skills, monsters, foeActions, battles, makeSprites }  (see game/ for a worked example)
+// content: { game, areas, scenes, heroes, skills, monsters, foeActions, battles, makeSprites }  (see game/ for a worked example)
 import { createUI } from './ui.js';
 import { texture } from './gl.js';
 import { GenLook } from './look-gen.js';
@@ -56,7 +56,7 @@ export function start(content) {
   const lookFor = kind => {
     if (!looks[kind]) {
       try {
-        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas) : new GenLook(gl, cv, stage, atlas);
+        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas) : new GenLook(gl, cv, stage, atlas, content.scenes);
       } catch (e) {
         throw new Error('the graphics shaders failed to start on this device (' + e.message + ')');
       }

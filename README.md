@@ -43,16 +43,18 @@ engine/            the runtime; plain ES modules, no dependencies
   nav.js           walk maps: blocked cells, ground height, routes
   look-gen.js      the "gen" look and its shaders (shaders-gen.js)
   look-ink.js      the "ink" look and its shaders (shaders-ink.js)
-  gen/             the scene generator used by the gen look
+  gen/             the scene generator used by the gen look, and the kit of shapes scenes are built with
   monsters.js      decoding and skinning of baked monsters
   png.js, gl.js, ui.js
 game/              one game: data and art only
   game.json        party, starting place, items, which packs to fetch
   areas/*.json     an area: its look, people, things, exits, hints and scripts
+  scenes/*.js      the generated scenes the gen areas are built from
   heroes.json, skills.json, monsters.json, foe-actions.json, battles.json
   art/sprites.js   the sprite sheet, drawn by code
   index.html       the page shell
 scenes/ink/        Ink Studio sources for the baked area and the monsters
+scenes/gen/        generated scenes from the prototype that this game does not use; not bundled
 packs/             baked output, committed, so a build does not need Ink Studio
 tools/             build, content check, bakers, map printers, a static server
 test/              unit tests, and e2e/ for the browser run
@@ -63,8 +65,9 @@ test/              unit tests, and e2e/ for the browser run
 An area chooses how it is drawn with `"look"`.
 
 **`gen`** areas are built in the browser by the scene generator (signed-distance scenes turned into soft round splats, with a
-walk map and light map). The camera is orthographic with a fixed tilt and turns in eighths. A Pixel switch chooses between a
-small buffer shown in whole device pixels and a large smooth one.
+walk map and light map), from one of the game's scenes in `game/scenes/` named by `"scene"`. The camera is orthographic with
+a fixed tilt and turns in eighths. A Pixel switch chooses between a small buffer shown in whole device pixels and a large
+smooth one.
 
 **`ink`** areas are sculpted with [Ink Studio](https://github.com/siliconjungle/shapeshift-labs-ink-studio) and baked by
 `tools/bake-ink-area.cjs` into a pack: the dabs that can ever be seen, a table of colour by light level, and a walk map. The
@@ -124,7 +127,36 @@ Battles are data too. A skill or foe action is a move plus timed hits:
            "hits": [{ "at": 0.36, "power": 1.5, "magic": true, "fx": "burst", "color": "#7ff" }] }
 ```
 
-The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill or pack file).
+The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill, scene or pack file).
+
+### Generated scenes
+
+A gen area names a scene: `"scene": "brindlebrook"` is `game/scenes/brindlebrook.js`, handed to the engine by `game/main.js`. A
+scene is a function that takes the generator's kit (the grid, noise, shapes such as `box`, `cyl`, `cap` and `crag`, and a few
+shared props) and returns its ground, its materials and a `build` that places everything:
+
+```js
+export default function (K) {
+  const { C, G0, pillar } = K;
+  return {
+    name: 'Cellar', bg: [10, 13, 24], LD: [-0.4, 0.75, -0.52], amb: [0.31, 0.35, 0.5], sun: [0.66, 0.72, 0.95],
+    level: null,                                      // no water
+    pv: [0.04, 0.5, 0.03], pcol: [120, 255, 226], pn: 26,  // drifting motes: speed, colour, how many
+    foot: (x, z) => Math.hypot(x - C, z - C) - 33,    // the footprint: negative inside
+    h: (x, z) => G0 + 1,                              // ground height
+    bot: (x, z) => G0 - 6,                            // the underside
+    top: () => 97, side: () => 98,                    // materials of the ground's top and sides
+    build() { this.lights = []; pillar(C - 13, C + 21, G0 + 1, 13); }
+  };
+}
+```
+
+The generator runs in a Web Worker and receives the scene as text, so a scene must be self-contained: it may use only what it
+takes from `K`, never an import or anything else in its module. `npm test` runs every scene in `game/scenes/` that way. A
+scene with `walk: true` gets a walk map, and its `poi` are the named places areas can put people and things at.
+
+`scenes/gen/` keeps the prototype's other scenes (a lighthouse, a desert oasis, a shipwreck, clockworks and more). They are
+not part of this game or its build; copy one into `game/scenes/` to use it, or look at it with `tools/genmap.mjs`.
 
 ## Baking
 
@@ -134,7 +166,7 @@ Baking needs a checkout of Ink Studio; it is not a dependency of the engine or t
 node tools/bake-ink-area.cjs <ink-studio dir> scenes/ink/lighthouse.cjs packs/lighthouse 0.05 [debug-map.png]
 node tools/bake-monsters.cjs <ink-studio dir> packs/monsters.json
 node tools/navcheck.cjs packs/lighthouse 1.0,0.5,4.1,1.75 3.1,1.4 0.6,0.86   # print the walk map, check routes
-node tools/genmap.mjs 9                                                      # places and walk map of a generated scene
+node tools/genmap.mjs game/scenes/brindlebrook.js                            # places and walk map of a generated scene
 ```
 
 The walk map of an ink area is worked out from the dabs: ground is the lowest seen, up-facing, dry surface in a column,
@@ -145,8 +177,6 @@ no ground, holds an obstacle, or steps too far to its neighbour.
 
 - No menus, inventory screen, choices in dialogue, shops or sound.
 - Battles are only drawn by the gen look; monsters are not drawn in ink areas.
-- Generated scenes still live inside the generator (`engine/gen/genmain.js`, picked by index). Moving their definitions
-  into `game/` is the next clean-up.
 - The ink look redraws every dab whenever the camera moves; it has no culling yet.
 - One save slot.
 

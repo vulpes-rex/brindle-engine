@@ -10,5 +10,17 @@ import skills from './skills.json';
 import monsters from './monsters.json';
 import foeActions from './foe-actions.json';
 import battles from './battles.json';
+import brindlebrookScene from './scenes/brindlebrook.js';
+import underhallScene from './scenes/underhall.js';
 
-start({ game, areas: { brindlebrook, underhall, lighthouse }, heroes, skills, monsters, foeActions, battles, makeSprites });
+start({
+  game,
+  areas: { brindlebrook, underhall, lighthouse },
+  scenes: { brindlebrook: brindlebrookScene, underhall: underhallScene },
+  heroes,
+  skills,
+  monsters,
+  foeActions,
+  battles,
+  makeSprites
+});

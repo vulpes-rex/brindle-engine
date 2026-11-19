@@ -1,7 +1,11 @@
-// node tools/genmap.mjs <scene index> [x0,z0,x1,z1]   prints a generated scene's named places and a window of its walk map
+// node tools/genmap.mjs <scene file> [x0,z0,x1,z1]   prints a generated scene's named places and a window of its walk map
+//   e.g. node tools/genmap.mjs game/scenes/brindlebrook.js      or any of the prototype's scenes in scenes/gen/
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { genMain } from '../engine/gen/genmain.js';
 import { Nav } from '../engine/nav.js';
-const si = +process.argv[2], t0 = Date.now(), r = genMain(si, () => {}), w = r.walk;
+const scene = (await import(pathToFileURL(path.resolve(process.argv[2])))).default;
+const t0 = Date.now(), r = genMain(scene, () => {}), w = r.walk;
 console.log(r.meta.name, 'splats', r.n, 'ms', Date.now() - t0, 'yaw0', r.meta.ry0);
 if (!w) process.exit(0);
 const nav = new Nav({ NU: w.NU, C: w.C, N: w.N, RS: w.RS, BL: w.BL, GH: w.GH, SH: w.SH });

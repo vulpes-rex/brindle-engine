@@ -1,7 +1,7 @@
 {
   "name": "Brindlebrook",
   "look": "gen",
-  "scene": 9,
+  "scene": "brindlebrook",
   "spawns": {
     "start": { "poi": "start", "face": [0, 1] },
     "gate": { "at": [-0.5, -52], "face": [0, 1] }

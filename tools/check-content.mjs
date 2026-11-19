@@ -1,4 +1,4 @@
-// Looks over the game's data before a build: every script step, flag test, spawn, sprite, battle and pack must refer to
+// Looks over the game's data before a build: every script step, flag test, spawn, sprite, battle, scene and pack must refer to
 // something that exists. Returns a list of problems (empty when all is well).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +18,7 @@ export async function checkContent(root) {
     foeActions = read(path.join(G, 'foe-actions.json')),
     battles = read(path.join(G, 'battles.json')),
     sprites = makeSprites().names,
+    scenes = fs.readdirSync(path.join(G, 'scenes')).filter(f => f.endsWith('.js')).map(f => f.slice(0, -3)),
     out = [],
     known = { items: Object.keys(game.items || {}), battles: Object.keys(battles), spawns: {} };
   for (const id in areas) known.spawns[id] = Object.keys(areas[id].spawns || {});
@@ -35,7 +36,7 @@ export async function checkContent(root) {
       scripts = a.scripts || {};
     if (!['gen', 'ink'].includes(a.look)) out.push(at + ': look must be "gen" or "ink"');
     if (a.look === 'ink') for (const f of ['pack.json', 'splats.png', 'lut.png']) if (!fs.existsSync(path.join(root, a.pack || '', f))) out.push(at + ': missing ' + (a.pack || '?') + '/' + f);
-    if (a.look === 'gen' && !Number.isInteger(a.scene)) out.push(at + ': a generated area needs a scene index');
+    if (a.look === 'gen' && !scenes.includes(a.scene)) out.push(at + ': no scene called "' + a.scene + '" in game/scenes/');
     for (const who of (a.actors || []).concat(a.props || [])) {
       if (!who.poi && !who.at) out.push(at + ': "' + who.id + '" needs a place (poi or at)');
       if (who.script && !scripts[who.script]) out.push(at + ': "' + who.id + '" uses a script that does not exist: ' + who.script);

@@ -15,8 +15,8 @@ const TILT = (33 * Math.PI) / 180,
   WC = 80; // half the world's width
 
 export class GenLook {
-  constructor(gl, cv, stage, atlas) {
-    Object.assign(this, { kind: 'gen', scale: 1, canSmooth: true, gl, cv, stage, atlas });
+  constructor(gl, cv, stage, atlas, scenes) {
+    Object.assign(this, { kind: 'gen', scale: 1, canSmooth: true, gl, cv, stage, atlas, scenes: scenes || {} });
     this.P1 = program(gl, G.VS, G.FS); // splats
     this.P2 = program(gl, G.VS, G.FA); // glows and motes
     this.P3 = program(gl, G.PV, G.PF); // finishing pass
@@ -47,10 +47,11 @@ export class GenLook {
   }
 
   // ---- scenes
-  // Generate scene `index`, off the main thread where workers are allowed. Jobs run one at a time.
-  generate(index, onProgress) {
+  // Generate a scene (a scene function, see game/scenes/), off the main thread where workers are allowed. Jobs run one at a
+  // time. The worker gets the scene as text, so a scene must not use anything outside itself.
+  generate(scene, onProgress) {
     return new Promise((res, rej) => {
-      this.jobs.push({ index, onProgress, res, rej });
+      this.jobs.push({ scene, onProgress, res, rej });
       this.pump();
     });
   }
@@ -68,7 +69,7 @@ export class GenLook {
     const local = () =>
       setTimeout(() => {
         try {
-          finish(binTiles(genMain(job.index, () => {}), TT, WC));
+          finish(binTiles(genMain(job.scene, () => {}), TT, WC));
         } catch (e) {
           finish(null, e);
         }
@@ -78,7 +79,8 @@ export class GenLook {
       if (!this.worker) {
         const src =
           'const genMain=' + genMain.toString() + ';const binTiles=' + binTiles.toString() +
-          ';onmessage=function(e){const si=e.data,r=binTiles(genMain(si,function(m){postMessage({p:m});}),' + TT + ',' + WC + ');' +
+          ';const made={};onmessage=function(e){const src=e.data,scene=made[src]||(made[src]=new Function("return ("+src+")")());' +
+          'const r=binTiles(genMain(scene,function(m){postMessage({p:m});}),' + TT + ',' + WC + ');' +
           'const w=r.walk,tr=[r.F.buffer,r.NB.buffer,r.CB.buffer,r.AF.buffer,r.ANB.buffer,r.ACB.buffer,r.yr.buffer,r.tiles.buffer];' +
           'if(w)tr.push(w.BL.buffer,w.B0.buffer,w.SH.buffer,w.GH.buffer);postMessage({r:r},tr);};';
         this.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
@@ -95,7 +97,7 @@ export class GenLook {
         w.terminate();
         local();
       };
-      w.postMessage(job.index);
+      w.postMessage(job.scene.toString());
     } catch (e) {
       this.noWorker = true;
       local();
@@ -128,10 +130,13 @@ export class GenLook {
     return v;
   }
 
-  // Load an area: { scene: index }. Returns what the engine needs: a handle to draw, the walk map and named places.
+  // Load an area: { scene: name }, one of the game's scenes. Returns what the engine needs: a handle to draw, the walk map and
+  // named places.
   async load(def, onProgress) {
+    const make = this.scenes[def.scene];
+    if (typeof make !== 'function') throw new Error('there is no scene called "' + def.scene + '"');
     const gl = this.gl,
-      r = await this.generate(def.scene, onProgress),
+      r = await this.generate(make, onProgress),
       B = [buffer(gl, r.F), buffer(gl, r.NB), buffer(gl, r.CB)],
       tiles = [];
     for (let k = 0; k <= r.T * r.T; k++) {
