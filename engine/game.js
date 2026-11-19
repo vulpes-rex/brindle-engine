@@ -234,6 +234,7 @@ export function start(content) {
     if (bt) g.battle.build(fr);
     else g.field.build(fr);
     g.look.draw(fr);
+    if (bt) g.battle.overlay();
   }
 
   g.field = createField(g);

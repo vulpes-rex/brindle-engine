@@ -1,10 +1,20 @@
 // node test/e2e/slice.mjs [url]
 // Plays the first slice in a headless browser: walk and talk in the village, take the road to Lighthouse rock (the other look),
 // climb to the keeper, row back, reload and continue from the save, then win the battle under the bluff.
-// Needs Playwright and a Chrome; set PLAYWRIGHT (module path) and CHROME (binary) if they are not in the usual places.
+// Needs Playwright (or playwright-core, a dev dependency, with the Chrome installed on this machine); set PLAYWRIGHT (module
+// path) and CHROME (binary) if they are not in the usual places.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
+const load = names => {
+  for (const n of names)
+    try {
+      return [require(n), n];
+    } catch (e) {}
+  throw new Error('Playwright is not installed: npm install, or set PLAYWRIGHT');
+};
+const [{ chromium }, pwName] = load(process.env.PLAYWRIGHT ? [process.env.PLAYWRIGHT] : ['playwright', 'playwright-core']);
+// (playwright-core brings no browser of its own: use the installed Chrome)
+const browser = process.env.CHROME ? { executablePath: process.env.CHROME } : pwName === 'playwright-core' ? { channel: 'chrome' } : {};
 const URL = process.argv[2] || 'http://localhost:8080/index.html',
   SHOTS = process.env.SHOTS || null;
 let failed = 0;
@@ -13,7 +23,7 @@ const ok = (c, m) => {
   if (!c) failed++;
 };
 
-const br = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+const br = await chromium.launch({ ...browser, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
 const pg = await ctx.newPage();
 const errs = [];

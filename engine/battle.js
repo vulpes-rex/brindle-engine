@@ -563,7 +563,11 @@ export function createBattle(g) {
       }
     }
     g.cam.shake = B.shake;
-    // bars, names, numbers and the turn arrow follow their owners (bars and names only while choosing, as in Golden Sun)
+  }
+
+  // bars, names, numbers and the turn arrow follow their owners (bars and names only while choosing, as in Golden Sun).
+  // Called once the frame is drawn, so they use the camera the picture was drawn with.
+  function overlay() {
     for (const q of pops) place(q);
     for (const f of B.units)
       if (f.side === 'foe') {
@@ -640,5 +644,5 @@ export function createBattle(g) {
     }
   }
 
-  return { B, start, update, build, tap };
+  return { B, start, update, build, overlay, tap };
 }
