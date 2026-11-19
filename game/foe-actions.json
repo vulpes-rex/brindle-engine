@@ -1,0 +1,6 @@
+{
+  "stomp": { "target": "heroes", "dur": 1.2, "text": "The {user} stomps. The whole floor shakes!", "hits": [{ "at": 0.3, "power": 0.5, "shake": 1 }] },
+  "lunge": { "target": "hero", "move": ["lunge", -7.6, -0.6], "dur": 1.2, "text": "The {user} lunges at {target}!", "hits": [{ "at": 0.3, "power": 1, "shake": 0.4 }] },
+  "hum": { "target": "heroes", "dur": 1.15, "text": "The {user} lets out a piercing hum!", "hits": [{ "at": 0.36, "power": 0.45, "magic": true, "flash": [0.5, 1, 0.9] }] },
+  "shard": { "target": "hero", "dur": 1.15, "text": "The {user} hurls a shard at {target}!", "hits": [{ "at": 0.3, "fx": "shard" }, { "at": 0.46, "power": 1, "magic": true, "flash": [0.5, 1, 0.9] }] }
+}

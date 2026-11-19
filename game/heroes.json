@@ -1,0 +1,5 @@
+{
+  "tam": { "name": "Tam", "sprite": "hero", "mhp": 62, "mmp": 10, "atk": 15, "def": 6, "mdf": 5, "spd": 8, "at": [10.5, -5], "skills": ["cleave"] },
+  "bram": { "name": "Bram", "sprite": "guard", "mhp": 80, "mmp": 8, "atk": 12, "def": 10, "mdf": 6, "spd": 5, "at": [14.5, 0.5], "skills": ["wall"] },
+  "maren": { "name": "Maren", "sprite": "elder", "mhp": 46, "mmp": 22, "atk": 5, "mag": 17, "def": 4, "mdf": 9, "spd": 6, "at": [11, 6.5], "skills": ["spark", "mend"] }
+}

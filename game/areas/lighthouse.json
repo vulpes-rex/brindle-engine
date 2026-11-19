@@ -1,0 +1,42 @@
+{
+  "name": "Lighthouse rock",
+  "look": "ink",
+  "pack": "packs/lighthouse",
+  "camera": { "pitch": 0.62, "dist": 8, "yaw": 0.7 },
+  "beam": true,
+  "tint": [0.86, 0.9, 1.02],
+  "spawns": {
+    "jetty": { "at": [3.1, 1.4], "face": [-1, 0] }
+  },
+  "actors": [
+    { "id": "keeper", "sprite": "keeper", "name": "Keeper Ansel", "at": [0.6, 0.86], "face": [0.4, 1], "script": "keeper" }
+  ],
+  "props": [
+    { "id": "boat", "at": [3.1, 1.92], "y": 0.1, "h": 2.5, "r": 4, "hit": 18, "script": "boat", "icon": "exit" },
+    { "id": "tower", "at": [-0.04, 0.16], "y": 1.43, "h": 6, "r": 2.5, "hit": 14, "script": "tower" }
+  ],
+  "hints": [
+    ["oil", "The rowboat at the end of the jetty goes back to Brindlebrook."],
+    [null, "Tap the ground to walk. The keeper's house is up the steps. The rowboat at the jetty goes back."]
+  ],
+  "scripts": {
+    "keeper": [
+      { "if": "oil",
+        "then": [["Keeper Ansel", "Mind the steps on your way down. They are slick after dark."]],
+        "else": [
+          ["Keeper Ansel", "A visitor! The boat hardly ever brings anyone out here."],
+          ["Keeper Ansel", "If you are going under the bluff, take these. My sister brews them, and the dark down there is hard on people."],
+          { "give": "tonic", "n": 2 },
+          { "set": "oil" },
+          ["", "You received 2 Tonics."]
+        ] }
+    ],
+    "tower": [
+      ["", "The tower door is locked. High above, the lamp turns."]
+    ],
+    "boat": [
+      ["", "The rowboat knocks gently against the jetty. You row back to the shore road."],
+      { "go": "brindlebrook", "at": "gate" }
+    ]
+  }
+}

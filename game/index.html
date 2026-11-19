@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Brindlebrook</title>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1218;--panel:#16222b;--line:#2b3e4a;--ink:#eef2ea;--dim:#9db0ac;--leaf:#8cc05a;--glow:#ffe896;--box:#1a2440;--boxline:#cfd8ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Pixelify Sans",ui-monospace,Menlo,monospace;overscroll-behavior:none}
+#app{width:min(calc(100vw - 16px),calc(100vh - 215px),760px);min-width:260px;margin:0 auto;padding:10px 0 14px;display:flex;flex-direction:column;gap:8px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h1{margin:0;font-size:22px;font-weight:600;color:var(--glow)}
+header span{font-size:13px;color:var(--dim)}
+#stage{position:relative;width:100%;aspect-ratio:1/1;border:2px solid var(--line);overflow:hidden;background:#101a22;touch-action:none;user-select:none;-webkit-user-select:none}
+#cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+#cv.smooth{image-rendering:auto}
+#load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(9,14,20,.9);font-size:17px;line-height:1.4}
+#load.off{display:none}
+#dlg{position:absolute;left:8px;right:8px;bottom:8px;padding:10px 12px 14px;background:var(--box);border:2px solid var(--boxline);box-shadow:0 0 0 2px #0a0f20;min-height:84px;font-size:16px;line-height:1.35;cursor:pointer}
+#dlg.off{display:none}
+#who{color:var(--glow);font-weight:600;margin-bottom:3px;min-height:0}
+#say{margin:0;white-space:pre-wrap}
+#more{position:absolute;right:10px;bottom:3px;font-size:12px;color:var(--boxline);animation:bob 0.9s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(3px)}}
+#cred{margin:2px 0 0;font-size:11px;line-height:1.3;color:#6f8582}
+#hint{margin:0;min-height:2.6em;font-size:14px;line-height:1.3;color:var(--dim)}
+#opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:2px solid var(--line);padding:6px;min-height:46px;cursor:pointer}
+button.on{border-color:var(--leaf);color:var(--glow)}
+button:active{background:#20323d}
+#ov{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#fade{position:absolute;inset:0;background:#05070c;opacity:0;pointer-events:none;transition:opacity .3s steps(6)}
+#fade.on{opacity:1}
+#toast{position:absolute;right:8px;top:8px;padding:3px 8px;font-size:12px;color:var(--glow);background:rgba(10,15,32,.85);border:1px solid var(--boxline);opacity:0;pointer-events:none;transition:opacity .3s}
+#toast.on{opacity:1}
+#title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;background:rgba(9,14,20,.92);font-size:17px;line-height:1.4}
+#title.off{display:none}
+#title p{margin:0;color:var(--ink);font-size:17px}
+#tbtn{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#tbtn button{min-width:120px;font-size:16px}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
+.ebar{position:absolute;width:54px;height:7px;margin:-4px 0 0 -27px;background:#0a1016;border:1px solid #cfd8ff}
+.ebar i{display:block;height:100%;background:#e0584c}
+.enm{position:absolute;transform:translate(-50%,-190%);font-size:11px;color:#eef;text-shadow:0 1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 -1px 0 #000;white-space:nowrap}
+.num{position:absolute;transform:translate(-50%,-50%);font-size:20px;font-weight:600;color:#fff;text-shadow:0 2px 0 #000,2px 0 0 #000,-2px 0 0 #000,0 -2px 0 #000;animation:rise .9s steps(9) forwards;white-space:nowrap}
+.num.heal{color:#8ff58a}
+.num.txt{font-size:14px;color:var(--glow)}
+@keyframes rise{0%{margin-top:0;opacity:1}70%{opacity:1}100%{margin-top:-34px;opacity:0}}
+.cur{position:absolute;transform:translate(-50%,-100%);color:var(--glow);font-size:14px;text-shadow:0 1px 0 #000,1px 0 0 #000,-1px 0 0 #000;animation:bob .7s steps(2) infinite}
+.fxp{position:absolute;width:6px;height:6px;margin:-3px}
+.slash{position:absolute;width:5px;height:46px;margin:-23px -2px;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#bp{display:flex;flex-direction:column;gap:6px}
+#bp.off{display:none}
+#bmsg{min-height:1.4em;font-size:14px;line-height:1.3;color:var(--glow)}
+#brow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:8px;align-items:start}
+#bparty{display:flex;flex-direction:column;gap:5px;border:2px solid var(--line);padding:6px;background:var(--panel)}
+.pr{display:grid;grid-template-columns:3.6em minmax(0,1fr) 2.6em;gap:5px;align-items:center;font-size:13px}
+.pr.act .pn{color:var(--glow)}
+.pr.ko{opacity:.45}
+.bar{position:relative;height:15px;background:#0a1016;border:1px solid var(--line)}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:#4f9a3c}
+.bar span{position:absolute;inset:0;font-size:11px;line-height:13px;text-align:center;color:#fff;text-shadow:0 1px 0 #000}
+.mp{font-size:11px;color:#8fc4ff;text-align:right}
+#bcmd{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start}
+#bcmd button{min-height:40px;font-size:13px;padding:3px}
+#bcmd button.wide{grid-column:1/3}
+#bcmd button:disabled{opacity:.4}
+#bcmd small{color:#8fc4ff;font-size:11px}
+@media (prefers-reduced-motion:reduce){#more{animation:none}.cur{animation:none}}
+</style>
+</head>
+<body>
+<main id="app">
+<header><h1 id="ttl">Brindlebrook</h1><span id="sub"></span></header>
+<div id="stage"><canvas id="cv"></canvas>
+<div id="ov"></div>
+<div id="dlg" class="off" role="dialog" aria-live="polite"><div id="who"></div><p id="say"></p><div id="more">&#9660;</div></div>
+<div id="fade"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="title" class="off"><p id="tmsg"></p><div id="tbtn"></div></div>
+<div id="load" role="status">Preparing&hellip;</div></div>
+<p id="hint"></p>
+<div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="sv">Save</button></div>
+<div id="bp" class="off"><div id="bmsg" role="status" aria-live="polite"></div><div id="brow"><div id="bparty"></div><div id="bcmd"></div></div></div>
+<p id="cred">Lighthouse rock and the monsters were sculpted with Ink Studio by Silicon Jungle (MIT licence), then baked to data that this page draws itself.</p>
+</main>
+<script>
+/*BUNDLE*/
+</script>
+</body>
+</html>

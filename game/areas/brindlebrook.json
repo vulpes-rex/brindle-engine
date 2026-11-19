@@ -1,0 +1,91 @@
+{
+  "name": "Brindlebrook",
+  "look": "gen",
+  "scene": 9,
+  "spawns": {
+    "start": { "poi": "start", "face": [0, 1] },
+    "gate": { "at": [-0.5, -52], "face": [0, 1] }
+  },
+  "actors": [
+    { "id": "elder", "sprite": "elder", "name": "Elder Maren", "poi": "elder", "face": [-0.4, -1], "script": "elder" },
+    { "id": "merchant", "sprite": "merchant", "name": "Odo", "poi": "merchant", "face": [0, -1], "script": "merchant" },
+    { "id": "girl", "sprite": "girl", "name": "Pip", "poi": "girl", "face": [0, -1], "wander": true, "script": "girl" },
+    { "id": "guard", "sprite": "guard", "name": "Bram", "poi": "guard", "face": [1, 0.2], "script": "guard" }
+  ],
+  "props": [
+    { "id": "chest", "poi": "chest", "dy": -1, "h": 1.6, "r": 2.4, "hit": 13, "script": "chest", "show": "!key" },
+    { "id": "door", "poi": "door", "dy": -4, "h": 4.5, "r": 3.6, "hit": 24, "script": "door", "show": "!won" },
+    { "id": "road", "at": [-0.5, -56.5], "h": 3, "r": 1.5, "hit": 16, "script": "road", "icon": "exit" }
+  ],
+  "anims": [
+    { "group": 1, "spin": 0.5 },
+    { "group": 2, "flag": "key", "to": -1.3, "rate": 5 },
+    { "group": 3, "flag": "open", "to": -1.9, "rate": 2.2 }
+  ],
+  "hints": [
+    ["won", "You cleared the first battle. The shore road by the south gate still leads out to Lighthouse rock."],
+    ["open", "Tap the open door to go down and fight."],
+    ["key", "Take the brass key to the door under the bluff: up the steps, then east."],
+    ["asked", "Find the chest beyond the pond."],
+    ["moved", "Talk to the elder by the well. The road out of the south gate goes to Lighthouse rock."],
+    [null, "Tap the ground to walk. Tap people to talk. Swipe or use Turn to rotate the view."]
+  ],
+  "scripts": {
+    "guard": [
+      { "case": [
+        ["won", [["Bram", "Back at my gate, where nothing has teeth."]]],
+        [null, [
+          ["Bram", "Welcome to Brindlebrook. Quiet place, mostly."],
+          ["Bram", "If you hear humming up by the bluff at night, that is the old door. Nobody has opened it in my lifetime."]
+        ]]
+      ] }
+    ],
+    "elder": [
+      { "case": [
+        ["won", [["Elder Maren", "It has gone quiet under the bluff. For now."]]],
+        ["open", [["Elder Maren", "The door is open. When you are ready, we go down together."]]],
+        ["key", [["Elder Maren", "You found the key? Then up the steps and east, under the bluff. Mind yourself."]]],
+        [null, [
+          { "set": "asked" },
+          ["Elder Maren", "A traveller! Good. The sealed door under the bluff has begun to hum, and I am too old to go poking at it."],
+          ["Elder Maren", "The miller hid its brass key in a chest beyond the pond, years ago. If you find it, would you take a look?"]
+        ]]
+      ] }
+    ],
+    "merchant": [
+      ["Odo", "Apples, oranges, and a cabbage that has seen better days."],
+      ["Odo", "I am still setting up. Come back when the shop is open."]
+    ],
+    "girl": [
+      { "if": "key",
+        "then": [["Pip", "You found the shiny thing! I knew it was there."]],
+        "else": [["Pip", "There is something shiny in the trees past the pond. Turn the view around and you can see it!"]] }
+    ],
+    "chest": [
+      { "if": "key",
+        "then": [["", "The chest is empty."]],
+        "else": [{ "set": "key" }, ["", "The lid creaks open."], ["", "You found the Brass Key."]] }
+    ],
+    "door": [
+      { "case": [
+        ["won", [["", "The stair below is quiet. The rest of the dungeon comes in a later build."]]],
+        ["open", [["", "The stair drops into the dark. Something is moving down there."], { "battle": "underhall" }]],
+        ["!key", [["", "A heavy door, sealed tight. Something hums faintly behind it."]]],
+        [null, [
+          { "set": "open" },
+          ["", "The brass key turns with a heavy clunk."],
+          ["", "The door swings open. Cold air rolls up from the dark."],
+          ["Elder Maren", "Not alone, you don’t. Bram, you are coming too."],
+          ["Bram", "Knew I should have stayed at my gate."],
+          ["", "Something stirs below..."],
+          { "battle": "underhall" }
+        ]]
+      ] }
+    ],
+    "road": [
+      ["", "The shore road runs down to a rowboat pulled up on the shingle."],
+      ["", "You push off toward the light on the rock."],
+      { "go": "lighthouse", "at": "jetty" }
+    ]
+  }
+}

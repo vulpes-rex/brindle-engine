@@ -1,0 +1,6 @@
+{
+  "mossback": { "name": "Mossback", "rig": "mossback", "mhp": 118, "atk": 16, "def": 9, "mdf": 2, "spd": 3, "top": 9.2, "rad": 4.6, "mid": 4, "shadowDx": -0.6,
+    "ai": [{ "every": 3, "use": "stomp" }, { "use": "lunge" }] },
+  "wisp": { "name": "Hum Wisp", "rig": "wisp", "mhp": 64, "atk": 11, "def": 3, "mdf": 9, "spd": 9, "top": 10.6, "rad": 2.1, "mid": 4.6,
+    "ai": [{ "chance": 0.34, "minTargets": 2, "use": "hum" }, { "use": "shard" }] }
+}

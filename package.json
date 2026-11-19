@@ -1,0 +1,16 @@
+{
+  "name": "brindle-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small JRPG engine: 2D pixel sprites walking in 3D worlds drawn from splats, in two looks.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node --test test/*.test.js",
+    "serve": "node tools/serve.mjs dist 8080",
+    "e2e": "node test/e2e/slice.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
