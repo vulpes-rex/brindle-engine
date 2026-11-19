@@ -1,0 +1,12 @@
+{
+  "character_id": "ab71e196-c13f-4449-b13a-d10a9f861efc",
+  "description": "Odo, a cheerful stocky merchant with a short dark beard, a red cloth cap, a mustard-yellow vest over a cream shirt, a brown apron and a leather satchel. JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "outline": "selective outline",
+    "detail": "high detail"
+  },
+  "seed": 1103,
+  "made": "2026-11-19T03:40:14.950006+00:00"
+}

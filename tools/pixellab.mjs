@@ -1,5 +1,6 @@
 // node tools/pixellab.mjs balance
 // node tools/pixellab.mjs make <name>... [--dry]     generate characters from art/pixellab/cast.json, with an 8-way walk
+//                                                    (carries on with one made before from the same prompt; --fresh: anew)
 // node tools/pixellab.mjs fetch <name>...            download a generated character again (from its meta.json)
 //
 // Generates the cast with PixelLab (https://api.pixellab.ai/v2) into art/pixellab/<name>/: rotations/<direction>.png, the walk
@@ -38,21 +39,29 @@ async function api(method, route, body) {
     console.log('  would', method, route, body ? JSON.stringify(body).slice(0, 400) : '');
     return {};
   }
-  const r = await fetch(API + route, {
-    method,
-    headers: Object.assign({ Authorization: 'Bearer ' + token() }, body ? { 'Content-Type': 'application/json' } : {}),
-    body: body ? JSON.stringify(body) : undefined
-  });
-  const text = await r.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (e) {
-    data = { raw: text };
+  // (an account runs a few jobs at once; when they are all busy, wait for one to come free)
+  for (let tries = 0; ; tries++) {
+    const r = await fetch(API + route, {
+      method,
+      headers: Object.assign({ Authorization: 'Bearer ' + token() }, body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await r.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      data = { raw: text };
+    }
+    if (r.status === 429 && tries < 60) {
+      process.stdout.write('~');
+      await sleep(15000);
+      continue;
+    }
+    if (!r.ok) throw new Error(method + ' ' + route + ': ' + r.status + ' ' + text.slice(0, 600));
+    count(data.usage);
+    return data;
   }
-  if (!r.ok) throw new Error(method + ' ' + route + ': ' + r.status + ' ' + text.slice(0, 600));
-  count(data.usage);
-  return data;
 }
 
 // wait for a background job; returns its last response
@@ -96,28 +105,45 @@ async function make(name) {
   if (!who) throw new Error('No one called "' + name + '" in art/pixellab/cast.json');
   const s = cast.settings,
     description = who.description + '. ' + cast.style,
-    dir = path.join(root, 'art/pixellab', name);
-  console.log(name + ': creating');
-  const made = await api('POST', '/create-character-v3', {
-    description,
-    name: who.description.split(',')[0],
-    image_size: { width: s.size, height: s.size },
-    view: s.view,
-    outline: s.outline,
-    detail: s.detail,
-    no_background: true,
-    seed: who.seed
-  });
-  const id = made.character_id;
-  if (made.background_job_id) await job(made.background_job_id, name + ' (character)');
-  console.log('\n' + name + ': walking');
-  const anim = await api('POST', '/characters/animations', { character_id: id, mode: 'template', template_animation_id: 'walking', directions: DIRS });
-  for (const j of anim.background_job_ids || []) await job(j, name + ' (walk)');
+    title = who.description.split(',')[0],
+    dir = path.join(root, 'art/pixellab', name),
+    metaFile = path.join(dir, 'meta.json'),
+    fresh = args.includes('--fresh');
+  // a character this prompt already made (a run that stopped part-way) is carried on with, unless --fresh
+  let meta = !fresh && fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, 'utf8')) : null;
+  if (!meta && !fresh && !dry) {
+    const list = await api('GET', '/characters?limit=100'),
+      had = (list.characters || []).find(c => c.name === title && (c.prompt || description) === description);
+    if (had) meta = { character_id: had.id, description, settings: s, seed: who.seed, made: had.created_at };
+  }
+  if (meta && meta.description !== description) meta = null; // (the prompt has changed since: make it again)
+  if (!meta) {
+    console.log(name + ': creating');
+    const made = await api('POST', '/create-character-v3', {
+      description,
+      name: title,
+      image_size: { width: s.size, height: s.size },
+      view: s.view,
+      outline: s.outline,
+      detail: s.detail,
+      no_background: true,
+      seed: who.seed
+    });
+    if (made.background_job_id) await job(made.background_job_id, name + ' (character)');
+    meta = { character_id: made.character_id, description, settings: s, seed: who.seed, made: new Date().toISOString() };
+    console.log();
+  } else console.log(name + ': carrying on with ' + meta.character_id);
   if (dry) return;
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ character_id: id, description, settings: s, seed: who.seed, made: new Date().toISOString() }, null, 2) + '\n');
-  console.log();
-  await fetchCharacter(name, id);
+  fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2) + '\n');
+  const c = await api('GET', '/characters/' + meta.character_id);
+  if (!(c.animations || []).some(a => /walk/i.test(a.animation_type + ' ' + (a.display_name || '')))) {
+    console.log(name + ': walking');
+    const anim = await api('POST', '/characters/animations', { character_id: meta.character_id, mode: 'template', template_animation_id: 'walking', directions: DIRS });
+    for (const j of anim.background_job_ids || []) await job(j, name + ' (walk)');
+    console.log();
+  }
+  await fetchCharacter(name, meta.character_id);
 }
 
 async function main() {

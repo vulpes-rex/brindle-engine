@@ -1,0 +1,12 @@
+{
+  "character_id": "7d3d467a-e695-4591-98c5-2a51c991b740",
+  "description": "Keeper Ansel, an old lighthouse keeper with white hair and a trimmed white beard, a navy wool sea coat with brass buttons, a navy cap with a gold band, carrying a small brass lantern. JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "outline": "selective outline",
+    "detail": "high detail"
+  },
+  "seed": 1106,
+  "made": "2026-11-19T03:40:21.174106+00:00"
+}

@@ -2,7 +2,7 @@
 // small buffer of who-is-in-front; a port of Ink Studio's pixel stage colours that buffer; sprites and ground decals go on top.
 // The camera is a long lens that follows the party, so a sprite pixel is one art pixel where the party stands. The scene is
 // only redrawn when the view moves; its light and water tick at twelve frames a second.
-import { program, buffer, texture, artSize } from './gl.js';
+import { program, buffer, texture, artSize, presenter } from './gl.js';
 import * as K from './shaders-ink.js';
 import { SF, DF } from './shaders-gen.js';
 import { loadPng } from './png.js';
@@ -39,6 +39,7 @@ export class InkLook {
     this.pA = program(gl, K.QV, K.PA); // the pixel stage
     this.pC = program(gl, K.QV, K.PC); // the clean-up
     this.pSp = program(gl, SV, SF);
+    this.present = presenter(gl);
     this.pD = program(gl, DV, DF);
     this.corner = buffer(gl, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
     this.quad = gl.createVertexArray();
@@ -165,7 +166,7 @@ export class InkLook {
       cv = this.cv,
       a = artSize(this.stage, this.base),
       w = a.w;
-    if (cv.width !== w || cv.height !== w) cv.width = cv.height = w;
+    if (cv.width !== a.cw || cv.height !== a.cw) cv.width = cv.height = a.cw;
     if (cv.style.width !== a.css) cv.style.width = cv.style.height = a.css;
     this.S = Math.max(1, Math.round(w / this.base));
     if (w === this.fw) return;
@@ -178,7 +179,7 @@ export class InkLook {
     this.tG1 = rgba();
     this.tC = rgba();
     this.tS = rgba();
-    this.tO = rgba();
+    this.tO = texture(gl, w, w, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.LINEAR); // (shown on the canvas from here)
     this.tD = texture(gl, w, w, gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     const fb = (cols, depth) => {
       const f = gl.createFramebuffer();
@@ -399,9 +400,6 @@ export class InkLook {
     gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
     gl.bindVertexArray(null);
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fbO);
-    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-    gl.blitFramebuffer(0, 0, w, w, 0, 0, w, w, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    this.present(this.tO, w, this.cv, true);
   }
 }

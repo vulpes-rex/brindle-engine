@@ -1,29 +1,29 @@
 {
-  "ppu": 5,
-  "cell": [24,32],
-  "foot": 31,
+  "ppu": 9,
+  "cell": [64,66],
+  "foot": 62,
   "top": 1,
-  "wide": 16,
+  "wide": 53,
   "stride": 6,
   "rows": ["south","south-east","east","north-east","north","north-west","west","south-west"],
   "cast": {
-    "hero": {"at":[0,0],"stand":1,"walk":[0,1,2,3],"from":"code"},
-    "elder": {"at":[96,0],"stand":1,"walk":[0,1,2,3],"from":"code"},
-    "merchant": {"at":[192,0],"stand":1,"walk":[0,1,2,3],"from":"code"},
-    "girl": {"at":[288,0],"stand":1,"walk":[0,1,2,3],"from":"code"},
-    "guard": {"at":[384,0],"stand":1,"walk":[0,1,2,3],"from":"code"},
-    "keeper": {"at":[480,0],"stand":1,"walk":[0,1,2,3],"from":"code"}
+    "hero": {"at":[0,0],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"},
+    "elder": {"at":[448,0],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"},
+    "merchant": {"at":[896,0],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"},
+    "girl": {"at":[1344,0],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"},
+    "guard": {"at":[0,528],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"},
+    "keeper": {"at":[448,528],"stand":0,"walk":[1,2,3,4,5,6],"from":"pixellab"}
   },
   "ko": {
-    "hero": [0,256,32,24,17],
-    "elder": [32,256,32,24,17],
-    "merchant": [64,256,32,24,18],
-    "girl": [96,256,32,24,17],
-    "guard": [128,256,32,24,18],
-    "keeper": [160,256,32,24,18]
+    "hero": [0,1056,64,64,44],
+    "elder": [66,1056,64,64,53],
+    "merchant": [132,1056,64,64,46],
+    "girl": [198,1056,64,64,48],
+    "guard": [264,1056,64,64,53],
+    "keeper": [330,1056,64,64,51]
   },
   "icons": {
-    "talk": [0,288,14,9],
-    "exit": [16,288,14,9]
+    "talk": [0,1122,14,9],
+    "exit": [16,1122,14,9]
   }
 }

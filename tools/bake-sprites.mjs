@@ -8,7 +8,7 @@
 //
 // Generated art is given selective outlines on the way: a dark line pixel takes a deep shade of the colour beside it rather
 // than black (as Xenogears' sprites are drawn). --ppu sets sprite pixels per game unit; by default it is worked out so a
-// character stands about 5.6 game units tall.
+// character stands about 6.4 game units tall.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +22,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
   },
   CODE_ONLY = process.argv.includes('--code'),
   ROWS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'],
-  TALL = 5.6, // how many game units a character stands
+  TALL = 6.4, // how many game units a character stands (a fifth more than the first drawn cast: they were small)
   STRIDE = 6; // game units walked in one walk cycle
 
 // ---- small images: { w, h, data (RGBA) }

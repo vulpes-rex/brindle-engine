@@ -1,0 +1,12 @@
+{
+  "character_id": "b98d8501-db99-489e-98a1-0242ff26ac06",
+  "description": "Pip, a lively little village girl with a ginger bob, a cream blouse, a blue pinafore skirt, a green neckerchief and brown shoes. JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "outline": "selective outline",
+    "detail": "high detail"
+  },
+  "seed": 1104,
+  "made": "2026-11-19T03:44:16.543Z"
+}

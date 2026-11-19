@@ -1,0 +1,12 @@
+{
+  "character_id": "9936cffb-bbb9-4d82-a8c8-5eafc233ed84",
+  "description": "Bram, a sturdy village guard in steel-grey plate armour with gold trim, a blue soldier's cap with a short brim, a navy cape, a round shield on his back. JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "outline": "selective outline",
+    "detail": "high detail"
+  },
+  "seed": 1105,
+  "made": "2026-11-19T03:40:11.890935+00:00"
+}

@@ -73,8 +73,9 @@ An area chooses how it is drawn with `"look"`.
 
 **`gen`** areas are built in the browser by the scene generator (signed-distance scenes turned into soft round splats, with a
 walk map and light map), from one of the game's scenes in `game/scenes/` named by `"scene"`. The camera is orthographic with
-a fixed tilt and turns in eighths. A Pixel switch chooses between a small buffer shown in whole device pixels and a large
-smooth one.
+a fixed tilt and turns in eighths. A Pixel switch chooses between a pixel-art picture about 46 game units across and a large
+smooth one. Both looks show their pixel art crisp at any screen size: in whole device pixels where those come close, and
+with sharp-bilinear scaling where they do not, so every screen sees about as much of the world.
 
 **`ink`** areas are sculpted with [Ink Studio](https://github.com/siliconjungle/shapeshift-labs-ink-studio) and baked by
 `tools/bake-ink-area.cjs` into a pack: the dabs that can ever be seen, a table of colour by light level, and a walk map. The
@@ -226,4 +227,5 @@ nothing here has been run on a real phone, so frame rates on one are unknown.
 
 ## Credits
 
-See [THIRD-PARTY.md](THIRD-PARTY.md). All sprites, scenes and writing are original to this project.
+See [THIRD-PARTY.md](THIRD-PARTY.md). The cast's sprites were generated with PixelLab from this project's own prompts
+(`art/pixellab/cast.json`); the first drawn cast, the scenes and the writing are original to this project.

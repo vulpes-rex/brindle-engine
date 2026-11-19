@@ -2,7 +2,7 @@
 // orthographic camera that turns in eighths. Pixel mode draws to a small buffer shown in whole device pixels; smooth mode to a
 // large one. Game units are world units here (scale 1); a game unit is ppu buffer pixels (the sprites' own scale), so the
 // pixel buffer is about 46 game units across whatever the sprites' size.
-import { program, buffer } from './gl.js';
+import { program, buffer, artSize, presenter } from './gl.js';
 import * as G from './shaders-gen.js';
 import { genMain } from './gen/genmain.js';
 import { binTiles } from './gen/bintiles.js';
@@ -25,6 +25,7 @@ export class GenLook {
     this.P5 = program(gl, G.DV, G.DF); // ground decals
     this.P6 = program(gl, G.XV, G.XF); // battle effects
     this.P7 = program(gl, G.PV, G.MF); // dimming
+    this.present = presenter(gl);
     this.cT = Math.cos(TILT);
     this.sT = Math.sin(TILT);
     this.zoom = 1;
@@ -217,12 +218,8 @@ export class GenLook {
       dpr = Math.min(window.devicePixelRatio || 1, 3),
       dev = Math.max(240, Math.round(cw * dpr));
     let w, cw2, css;
-    if (this.pixel) {
-      const k = Math.max(1, Math.round(dev / this.base));
-      w = Math.floor(dev / k) & ~1;
-      cw2 = w;
-      css = (w * k) / dpr + 'px';
-    } else {
+    if (this.pixel) ({ w, cw: cw2, css } = artSize(this.stage, this.base));
+    else {
       cw2 = Math.min(1200, dev) & ~1;
       w = Math.max(240, Math.round(cw2 * this.quality)) & ~1;
       css = '100%';
@@ -235,8 +232,10 @@ export class GenLook {
     this.fw = w;
     if (this.fbo) {
       gl.deleteFramebuffer(this.fbo);
+      gl.deleteFramebuffer(this.fbOut);
       gl.deleteTexture(this.tc);
       gl.deleteTexture(this.td);
+      gl.deleteTexture(this.tOut);
     }
     const mk = (internal, format, type, filter) => {
       const t = gl.createTexture();
@@ -248,12 +247,16 @@ export class GenLook {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       return t;
     };
-    this.tc = mk(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel || w === cw2 ? gl.NEAREST : gl.LINEAR);
+    this.tc = mk(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
     this.td = mk(gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, gl.NEAREST);
+    this.tOut = mk(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR); // the finished picture, scaled to the canvas
     this.fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tc, 0);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.td, 0);
+    this.fbOut = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbOut);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tOut, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -510,9 +513,9 @@ export class GenLook {
     }
     gl.depthMask(true);
     gl.disable(gl.BLEND);
-    // finish to the screen
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, this.cv.width, this.cv.height);
+    // finish (at the picture's own size), then show it on the canvas
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbOut);
+    gl.viewport(0, 0, fw, fw);
     gl.disable(gl.DEPTH_TEST);
     gl.useProgram(P3.p);
     gl.activeTexture(gl.TEXTURE0);
@@ -532,5 +535,6 @@ export class GenLook {
     gl.bindVertexArray(this.pv);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);
+    this.present(this.tOut, fw, this.cv, this.pixel);
   }
 }
