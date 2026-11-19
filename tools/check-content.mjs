@@ -3,7 +3,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkScript } from '../engine/script.js';
-import { makeSprites } from '../game/art/sprites.js';
 import { createFx } from '../engine/fx.js';
 
 const read = f => JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -18,7 +17,8 @@ export async function checkContent(root) {
     monsters = read(path.join(G, 'monsters.json')),
     foeActions = read(path.join(G, 'foe-actions.json')),
     battles = read(path.join(G, 'battles.json')),
-    sprites = makeSprites().names,
+    sheet = path.join(root, game.sprites || '', 'sheet.json'),
+    sprites = fs.existsSync(sheet) ? Object.keys(read(sheet).cast) : [],
     scenes = fs.readdirSync(path.join(G, 'scenes')).filter(f => f.endsWith('.js')).map(f => f.slice(0, -3)),
     out = [],
     known = { items: Object.keys(game.items || {}), battles: Object.keys(battles), spawns: {} };
@@ -30,6 +30,7 @@ export async function checkContent(root) {
   for (const id of game.party) if (!heroes[id]) out.push('game.json: party member "' + id + '" is not in heroes.json');
   for (const id of game.preload || []) if (!areas[id]) out.push('game.json: preload area "' + id + '" does not exist');
   for (const p of [game.monsterPack]) if (!fs.existsSync(path.join(root, p))) out.push('game.json: missing file ' + p);
+  for (const f of ['sheet.json', 'sheet.png']) if (!fs.existsSync(path.join(root, game.sprites || '?', f))) out.push('game.json: the sprite pack has no ' + f + ' (tools/bake-sprites.mjs makes it)');
 
   for (const id in areas) {
     const a = areas[id],

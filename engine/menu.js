@@ -24,22 +24,24 @@ export function createMenu(g, save) {
     aboutItem = it => it.about || (it.heal ? 'Restores ' + it.heal + ' HP.' : ''),
     aboutSkill = s => s.about || AIM[s.target] || '';
 
-  // a hero's portrait: head and shoulders of the front-facing standing frame from the sprite sheet, as an image (made once)
-  const TOP = 2,
-    TALL = 20;
+  // a hero's portrait: head and shoulders of the front-facing standing frame from the sprite sheet, as an image (made once),
+  // shown at whole multiples of its pixels
   function face(sprite) {
     if (faces[sprite]) return faces[sprite];
-    const ci = SP.names.indexOf(sprite),
+    const [x0, y0, w] = SP.frame(SP.names.indexOf(sprite), 0, false, 0),
+      top = Math.max(0, SP.SH + SP.offY - SP.tall - 1),
+      tall = Math.round(SP.tall * 0.66),
+      k = Math.max(1, Math.round(48 / w)),
       c = document.createElement('canvas'),
-      img = new ImageData(SP.SW, TALL);
-    c.width = SP.SW;
-    c.height = TALL;
-    for (let y = 0; y < TALL; y++) {
-      const from = ((y + TOP) * SP.w + (ci * SP.FR + 1) * SP.SW) * 4;
-      img.data.set(SP.data.subarray(from, from + SP.SW * 4), y * SP.SW * 4);
+      img = new ImageData(w, tall);
+    c.width = w;
+    c.height = tall;
+    for (let y = 0; y < tall; y++) {
+      const from = ((y0 + top + y) * SP.w + x0) * 4;
+      img.data.set(SP.data.subarray(from, from + w * 4), y * w * 4);
     }
     c.getContext('2d').putImageData(img, 0, 0);
-    return (faces[sprite] = '<img class="face" alt="" src="' + c.toDataURL() + '">');
+    return (faces[sprite] = '<img class="face" alt="" style="width:' + w * k + 'px;height:' + tall * k + 'px" src="' + c.toDataURL() + '">');
   }
 
   function render() {

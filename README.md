@@ -50,17 +50,19 @@ engine/            the runtime; plain ES modules, no dependencies
   monsters.js      decoding and skinning of baked monsters
   menu.js          the field menu: items, the party, saving
   icons.js         the little pixel-art icons the menus use
+  sprites.js       the cast's sprite pack: eight facings, a walk, a knocked-out frame
   png.js, gl.js, ui.js
 game/              one game: data and art only
   game.json        party, starting place, items (name, heal, about), which packs to fetch
   areas/*.json     an area: its look, people, things, exits, hints and scripts
   scenes/*.js      the generated scenes the gen areas are built from
   heroes.json, skills.json, monsters.json, foe-actions.json, battles.json
-  art/sprites.js   the sprite sheet, drawn by code
+  art/sprites.js   the cast as first drawn by code (baked into the sprite pack when there is no generated art)
   index.html       the page shell
 scenes/ink/        Ink Studio sources for the baked area and the monsters
 scenes/gen/        generated scenes from the prototype that this game does not use; not bundled
-packs/             baked output, committed, so a build does not need Ink Studio
+art/pixellab/      the cast generated with PixelLab: prompts (cast.json) and the frames it made
+packs/             baked output, committed, so a build does not need Ink Studio or PixelLab
 tools/             build, content check, bakers, map printers, a static server
 test/              unit tests, and e2e/ for the browser run
 ```
@@ -81,10 +83,11 @@ light, ramp or pattern colour, one-pixel cell edges, outlines, creases, light sh
 Ink Studio ships no browser viewport, so this drawing is the engine's own; against Ink Studio's offline renderer, a
 standalone viewer built on the same shaders matched 96 to 98 percent of pixels at five test views.
 
-The game itself never deals with the difference. It works in **game units** (one walk-map cell; a sprite pixel is a fifth of
-one) and asks the current look four things: which way the camera faces (`axes`), where a point lands on the picture
-(`project`), what ground a tap hits (`pick`), and to draw a list of sprites, shadows and rings (`draw`). An ink area names
-its `scale` (world units per game unit) when baked; a gen area's scale is 1.
+The game itself never deals with the difference. It works in **game units** (one walk-map cell; a sprite pixel is 1/ppu of
+one, where the sprite pack sets ppu and both looks draw the world at that scale, so sprites stay whole pixels) and asks the
+current look four things: which way the camera faces (`axes`), where a point lands on the picture (`project`), what ground a
+tap hits (`pick`), and to draw a list of sprites, shadows and rings (`draw`). An ink area names its `scale` (world units per
+game unit) when baked; a gen area's scale is 1.
 
 ## Writing the game
 
@@ -188,6 +191,19 @@ node tools/bake-monsters.cjs <ink-studio dir> packs/monsters.json
 node tools/navcheck.cjs packs/lighthouse 1.0,0.5,4.1,1.75 3.1,1.4 0.6,0.86   # print the walk map, check routes
 node tools/genmap.mjs game/scenes/brindlebrook.js                            # places and walk map of a generated scene
 ```
+
+The cast's sprites are a pack too (`packs/sprites`: `sheet.png` and `sheet.json`), baked by `tools/bake-sprites.mjs` from the
+art PixelLab generated (`art/pixellab/<name>/`) or, for anyone without it, from the cast drawn by code. Generating needs a
+PixelLab account and its API token, in `PIXELLAB_API_KEY` or a file `.pixellab-token` (which git ignores):
+
+```sh
+node tools/pixellab.mjs balance                      # what the account has left
+node tools/pixellab.mjs make hero guard              # a character in 8 directions with an 8-way walk, from art/pixellab/cast.json
+node tools/bake-sprites.mjs                          # bake the pack (--code: the drawn cast only; --ppu n: the scale)
+```
+
+The prompts follow one art direction: Xenogears-era field sprites (soft painted shading, no black outlines) in fantasy class
+costumes. The baker makes sure of the outlines: a near-black line pixel takes a deep shade of the colour beside it.
 
 The walk map of an ink area is worked out from the dabs: ground is the lowest seen, up-facing, dry surface in a column,
 climbed up small steps; a column is an obstacle when something stands in body height above it; a cell is blocked when it has

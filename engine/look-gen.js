@@ -1,6 +1,7 @@
 // The "gen" look: areas built in the browser by the scene generator (engine/gen), drawn as soft round splats under a fixed-tilt
 // orthographic camera that turns in eighths. Pixel mode draws to a small buffer shown in whole device pixels; smooth mode to a
-// large one. Game units are world units here (scale 1).
+// large one. Game units are world units here (scale 1); a game unit is ppu buffer pixels (the sprites' own scale), so the
+// pixel buffer is about 46 game units across whatever the sprites' size.
 import { program, buffer } from './gl.js';
 import * as G from './shaders-gen.js';
 import { genMain } from './gen/genmain.js';
@@ -13,8 +14,10 @@ const TILT = (33 * Math.PI) / 180, // the field's camera; a battle can ask for i
   WC = 80; // half the world's width
 
 export class GenLook {
-  constructor(gl, cv, stage, atlas, scenes) {
-    Object.assign(this, { kind: 'gen', scale: 1, canSmooth: true, gl, cv, stage, atlas, scenes: scenes || {} });
+  constructor(gl, cv, stage, atlas, opts) {
+    const o = opts || {},
+      ppu = o.ppu || 5;
+    Object.assign(this, { kind: 'gen', scale: 1, canSmooth: true, gl, cv, stage, atlas, scenes: o.scenes || {}, ppu, base: Math.round(46.4 * ppu) });
     this.P1 = program(gl, G.VS, G.FS); // splats
     this.P2 = program(gl, G.VS, G.FA); // glows and motes
     this.P3 = program(gl, G.PV, G.PF); // finishing pass
@@ -215,7 +218,7 @@ export class GenLook {
       dev = Math.max(240, Math.round(cw * dpr));
     let w, cw2, css;
     if (this.pixel) {
-      const k = Math.max(1, Math.round(dev / 232));
+      const k = Math.max(1, Math.round(dev / this.base));
       w = Math.floor(dev / k) & ~1;
       cw2 = w;
       css = (w * k) / dpr + 'px';
@@ -226,8 +229,8 @@ export class GenLook {
     }
     if (cv.width !== cw2 || cv.height !== cw2) cv.width = cv.height = cw2;
     if (cv.style.width !== css) cv.style.width = cv.style.height = css;
-    this.S = Math.max(1, Math.round(w / 232));
-    this.uScale = (this.S * 10 * this.zoom) / w;
+    this.S = Math.max(1, Math.round(w / this.base));
+    this.uScale = (this.S * 2 * this.ppu * this.zoom) / w;
     if (w === this.fw) return;
     this.fw = w;
     if (this.fbo) {
@@ -359,7 +362,7 @@ export class GenLook {
       }
       if (this.pixel && fr.cam.still) {
         // (the focus sits on a whole art pixel, so the ground does not swim under the sprites)
-        const u = 1 / (5 * S);
+        const u = 1 / (this.ppu * S);
         let X = fx * c + fz * s,
           Zc = fz * c - fx * s,
           Ys = fy * cT + Zc * sT;

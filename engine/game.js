@@ -1,7 +1,8 @@
 // The engine's front door. start(content) takes a game (its data and its sprite sheet) and runs it: it loads areas through
 // whichever look each one asks for, switches between walking and fighting, runs scripts, saves, and drives the frame loop.
 //
-// content: { game, areas, scenes, heroes, skills, monsters, foeActions, battles, makeSprites }  (see game/ for a worked example)
+// content: { game, areas, scenes, heroes, skills, monsters, foeActions, battles }  (see game/ for a worked example); the cast's
+// sprites are a pack the game names (game.sprites, baked by tools/bake-sprites.mjs)
 import { createUI } from './ui.js';
 import { texture } from './gl.js';
 import { GenLook } from './look-gen.js';
@@ -12,18 +13,24 @@ import { createMenu } from './menu.js';
 import { runScript, test } from './script.js';
 import { SaveStore } from './save.js';
 import { decodeMonster } from './monsters.js';
+import { loadSprites } from './sprites.js';
 
 const ZERO = new Float32Array(9);
 
-export function start(content) {
+export async function start(content) {
   const ui = createUI(document),
     $ = ui.$,
     cv = ui.el.cv,
     stage = ui.el.stage,
     gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
   if (!gl) return ui.fail('This needs WebGL 2, which this browser or device does not offer.');
-  const SP = content.makeSprites(),
-    atlas = texture(gl, SP.w, SP.h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(SP.data.buffer));
+  let SP;
+  try {
+    SP = await loadSprites(content.game.sprites);
+  } catch (e) {
+    return ui.fail('Could not load the sprites: ' + e.message);
+  }
+  const atlas = texture(gl, SP.w, SP.h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, SP.data);
   for (const id in content.areas) content.areas[id].id = id;
 
   // g: the running game, shared by the field, the battle and the looks
@@ -57,7 +64,7 @@ export function start(content) {
   const lookFor = kind => {
     if (!looks[kind]) {
       try {
-        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas) : new GenLook(gl, cv, stage, atlas, content.scenes);
+        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas, { ppu: SP.ppu }) : new GenLook(gl, cv, stage, atlas, { scenes: content.scenes, ppu: SP.ppu });
       } catch (e) {
         throw new Error('the graphics shaders failed to start on this device (' + e.message + ')');
       }

@@ -32,8 +32,9 @@ gl_Position=vec4(uF*c.xy/zc/(0.5*uRes),2.0*(zc-uNear)/(uFar-uNear)-1.0-uB,1.0);v
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 export class InkLook {
-  constructor(gl, cv, stage, atlas) {
-    Object.assign(this, { kind: 'ink', scale: 1, canSmooth: false, gl, cv, stage, atlas });
+  constructor(gl, cv, stage, atlas, opts) {
+    const ppu = (opts && opts.ppu) || 5; // (a game unit is ppu art pixels where the party stands)
+    Object.assign(this, { kind: 'ink', scale: 1, canSmooth: false, gl, cv, stage, atlas, ppu, base: Math.round(46.4 * ppu) });
     this.pS = program(gl, K.VS, K.FS); // dabs -> who is in front
     this.pA = program(gl, K.QV, K.PA); // the pixel stage
     this.pC = program(gl, K.QV, K.PC); // the clean-up
@@ -162,11 +163,11 @@ export class InkLook {
   resize() {
     const gl = this.gl,
       cv = this.cv,
-      a = artSize(this.stage, 232),
+      a = artSize(this.stage, this.base),
       w = a.w;
     if (cv.width !== w || cv.height !== w) cv.width = cv.height = w;
     if (cv.style.width !== a.css) cv.style.width = cv.style.height = a.css;
-    this.S = Math.max(1, Math.round(w / 232));
+    this.S = Math.max(1, Math.round(w / this.base));
     if (w === this.fw) return;
     this.fw = w;
     this.key = '';
@@ -209,7 +210,7 @@ export class InkLook {
       cp = Math.cos(sc.pitch),
       sp = Math.sin(sc.pitch),
       dist = sc.dist,
-      F = (5 * this.S * dist) / s,
+      F = (this.ppu * this.S * dist) / s,
       Z = [cp * Math.sin(yaw), sp, cp * Math.cos(yaw)],
       X = [Math.cos(yaw), 0, -Math.sin(yaw)],
       Y = [Z[1] * X[2], Z[2] * X[0] - Z[0] * X[2], -Z[1] * X[0]];

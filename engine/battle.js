@@ -410,7 +410,7 @@ export function createBattle(g) {
       if (u.side !== want || u.hp <= 0) continue;
       const p = g.look.project(u.x, GY + (u.side === 'foe' ? u.mid : 3.5), u.z),
         d = Math.hypot(nx - p[0], ny - p[1]);
-      if (d < (u.side === 'foe' ? 30 : 20) * k && d < bd) {
+      if (d < (u.side === 'foe' ? (30 * SP.ppu) / 5 : SP.tall * 0.7) * k && d < bd) {
         bd = d;
         best = u;
       }
@@ -603,9 +603,7 @@ export function createBattle(g) {
 
   // what to draw this frame
   function build(fr) {
-    const SW = SP.SW,
-      SH = SP.SH,
-      t = g.t,
+    const t = g.t,
       ax = g.look.axes(cam.yaw),
       F = centre(side('foe')),
       H = centre(side('hero')),
@@ -642,17 +640,17 @@ export function createBattle(g) {
         for (let i = 0; i < 3; i++) tint[i] += c[i] * p;
       }
       if (u.ko) {
-        fr.sprites.push({ rect: SP.ko(u.ci), flip: 0, x: u.x, y: GY, z: u.z, tint: [0.7, 0.72, 0.86], offY: -1, bias: 0.66 });
+        fr.sprites.push({ rect: SP.ko(u.ci), flip: 0, x: u.x, y: GY, z: u.z, tint: [0.7, 0.72, 0.86], offY: SP.koOffY(u.ci), bias: 0.66 });
         continue;
       }
       // seen from behind, facing whatever they are acting on (or the foes); at rest they breathe
       const tg = a && a.user === u && a.targets[0] && a.targets[0] !== u ? a.targets[0] : null,
         to = tg ? [tg.x - u.x, tg.z - u.z] : [F[0] - u.x, F[1] - u.z],
-        f = facing(to[0], to[1], ax),
+        row = facing(to[0], to[1], ax),
         idle = !u.run && !u.hop && !(a && a.user === u),
         bob = idle && Math.sin(t * 3.3 + u.i * 1.9) > 0.2 ? 1 : 0,
         kb = u.kb * 0.9;
-      fr.sprites.push({ rect: [(u.ci * SP.FR + (u.run ? Math.floor(u.dist / 1.5) % 4 : 1)) * SW, f[0] * SH, SW, SH], flip: f[1], x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: -1 + bob, bias: 0.66 });
+      fr.sprites.push({ rect: SP.frame(u.ci, row, u.run, u.dist), flip: 0, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: SP.offY + bob, bias: 0.66 });
     }
   }
 

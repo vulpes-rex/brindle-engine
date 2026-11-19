@@ -1,6 +1,5 @@
 // The game: its data and its art, handed to the engine. Nothing here is code the engine depends on.
 import { start } from '../engine/game.js';
-import { makeSprites } from './art/sprites.js';
 import game from './game.json';
 import brindlebrook from './areas/brindlebrook.json';
 import underhall from './areas/underhall.json';
@@ -21,6 +20,5 @@ start({
   skills,
   monsters,
   foeActions,
-  battles,
-  makeSprites
+  battles
 });
