@@ -8,9 +8,7 @@ import { binTiles } from './gen/bintiles.js';
 import { Nav } from './nav.js';
 import { skinMonster } from './monsters.js';
 
-const TILT = (33 * Math.PI) / 180,
-  cT = Math.cos(TILT),
-  sT = Math.sin(TILT),
+const TILT = (33 * Math.PI) / 180, // the field's camera; a battle can ask for its own tilt, zoom and perspective
   TT = 10, // tiles a side, for skipping what is off screen
   WC = 80; // half the world's width
 
@@ -22,6 +20,12 @@ export class GenLook {
     this.P3 = program(gl, G.PV, G.PF); // finishing pass
     this.P4 = program(gl, G.SV, G.SF); // sprites
     this.P5 = program(gl, G.DV, G.DF); // ground decals
+    this.P6 = program(gl, G.XV, G.XF); // battle effects
+    this.P7 = program(gl, G.PV, G.MF); // dimming
+    this.cT = Math.cos(TILT);
+    this.sT = Math.sin(TILT);
+    this.zoom = 1;
+    this.persp = 0;
     this.corner = buffer(gl, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
     this.quad = gl.createVertexArray();
     gl.bindVertexArray(this.quad);
@@ -30,6 +34,20 @@ export class GenLook {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.bindVertexArray(null);
     this.pv = gl.createVertexArray();
+    // effects: 14 floats an instance (A, B, size, turn, kind, colour, strength), refilled each frame
+    this.fxCap = 4096;
+    this.fxBuf = buffer(gl, new Float32Array(this.fxCap * 14), gl.DYNAMIC_DRAW);
+    this.fxVao = gl.createVertexArray();
+    gl.bindVertexArray(this.fxVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.corner);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    for (const loc of [1, 2, 3, 4]) {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribDivisor(loc, 1);
+    }
+    this.fxFrom(0);
+    gl.bindVertexArray(null);
     this.pixel = true;
     this.quality = 1;
     this.fw = 0;
@@ -102,6 +120,13 @@ export class GenLook {
       this.noWorker = true;
       local();
     }
+  }
+
+  // point the effects' instance attributes at instance `first` onward (the effects VAO must be bound)
+  fxFrom(first) {
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.fxBuf);
+    [[1, 3, 0], [2, 3, 12], [3, 4, 24], [4, 4, 40]].forEach(([loc, n, off]) => gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 56, off + first * 56));
   }
 
   vao(B, first) {
@@ -202,7 +227,7 @@ export class GenLook {
     if (cv.width !== cw2 || cv.height !== cw2) cv.width = cv.height = cw2;
     if (cv.style.width !== css) cv.style.width = cv.style.height = css;
     this.S = Math.max(1, Math.round(w / 232));
-    this.uScale = (this.S * 10) / w;
+    this.uScale = (this.S * 10 * this.zoom) / w;
     if (w === this.fw) return;
     this.fw = w;
     if (this.fbo) {
@@ -255,17 +280,20 @@ export class GenLook {
       c = Math.cos(this.ry),
       s = Math.sin(this.ry),
       X = dx * c + dz * s,
-      Z = dz * c - dx * s;
-    return [X * this.uScale, (dy * cT + Z * sT) * this.uScale];
+      Z = dz * c - dx * s,
+      q = Math.max(1 + (Z * this.cT - dy * this.sT) * this.persp, 0.05);
+    return [(X * this.uScale) / q, ((dy * this.cT + Z * this.sT) * this.uScale) / q];
   }
 
-  // the size of one sprite pixel on the picture (-1..1 units)
+  // the size of one sprite pixel on the picture (-1..1 units), at the focus
   get px() {
-    return (2 * this.S) / this.fw;
+    return (2 * this.S * this.zoom) / this.fw;
   }
 
-  // a place on the picture -> the ground under it, or null
+  // a place on the picture -> the ground under it, or null (for the field's camera: no perspective)
   pick(nx, ny, nav) {
+    const cT = this.cT,
+      sT = this.sT;
     const c = Math.cos(this.ry),
       s = Math.sin(this.ry),
       X = nx / this.uScale,
@@ -278,7 +306,8 @@ export class GenLook {
   setCam(P) {
     const gl = this.gl;
     gl.useProgram(P.p);
-    gl.uniform4f(P.u('uCam'), Math.cos(this.ry), Math.sin(this.ry), cT, sT);
+    gl.uniform4f(P.u('uCam'), Math.cos(this.ry), Math.sin(this.ry), this.cT, this.sT);
+    gl.uniform1f(P.u('uPersp'), this.persp);
     gl.uniform3f(P.u('uFocus'), this.F3[0], this.F3[1], this.F3[2]);
     gl.uniform1f(P.u('uScale'), this.uScale);
   }
@@ -302,13 +331,21 @@ export class GenLook {
     return b > -m && a < m && d > -m && c < m;
   }
 
-  // ---- one frame. fr: { t, cam: {focus, yaw, still, shake}, anim (Float32Array 9), models, blobs, rings, sprites }
+  // ---- one frame. fr: { t, cam: {focus, yaw, still, shake, tilt?, zoom?, persp?}, anim (Float32Array 9), models, blobs, rings,
+  //   sprites, fx?: {data, n, over} from engine/fx.js, dim?: 0..1, flash?: [r, g, b, strength] }
   draw(fr) {
     const gl = this.gl,
       sc = this.scene,
       t = fr.t,
-      { P1, P2, P3, P4, P5 } = this;
+      { P1, P2, P3, P4, P5, P6, P7 } = this,
+      tilt = fr.cam.tilt === undefined ? TILT : fr.cam.tilt;
+    this.cT = Math.cos(tilt);
+    this.sT = Math.sin(tilt);
+    this.zoom = fr.cam.zoom || 1;
+    this.persp = fr.cam.persp || 0;
     this.resize();
+    const cT = this.cT,
+      sT = this.sT;
     const S = this.S,
       fw = this.fw;
     this.ry = fr.cam.yaw;
@@ -407,6 +444,7 @@ export class GenLook {
     gl.depthFunc(gl.LESS);
     this.setCam(P4);
     gl.uniform1f(P4.u('uW'), fw);
+    gl.uniform1f(P4.u('uZoom'), this.zoom);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.atlas);
     gl.uniform1i(P4.u('uT'), 0);
@@ -437,6 +475,36 @@ export class GenLook {
       gl.bindVertexArray(sc.vao2);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, sc.n2);
     }
+    // battle effects: the scene dims behind them, then they are added on, those marked 'over' on top of everything
+    const dim = fr.dim || 0;
+    if (dim > 0) {
+      gl.disable(gl.DEPTH_TEST);
+      gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+      gl.useProgram(P7.p);
+      gl.uniform1f(P7.u('uK'), 1 - dim);
+      gl.bindVertexArray(this.pv);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.enable(gl.DEPTH_TEST);
+      gl.blendFunc(gl.ONE, gl.ONE);
+    }
+    const fx = fr.fx;
+    if (fx && fx.n) {
+      const n = Math.min(fx.n, this.fxCap),
+        over = Math.min(fx.over, n);
+      this.setCam(P6);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.fxBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, fx.data, 0, n * 14);
+      gl.bindVertexArray(this.fxVao);
+      if (n > over) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n - over);
+      if (over) {
+        // (an instanced draw cannot start part-way, so the 'over' ones are reached by moving the attribute pointers)
+        gl.disable(gl.DEPTH_TEST);
+        this.fxFrom(n - over);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, over);
+        this.fxFrom(0);
+        gl.enable(gl.DEPTH_TEST);
+      }
+    }
     gl.depthMask(true);
     gl.disable(gl.BLEND);
     // finish to the screen
@@ -455,6 +523,9 @@ export class GenLook {
     gl.uniform2f(P3.u('uPx'), 1 / fw, 1 / fw);
     gl.uniform3f(P3.u('uBg'), bg[0] / 255, bg[1] / 255, bg[2] / 255);
     gl.uniform1f(P3.u('uPix'), this.pixel ? 1 : 0);
+    gl.uniform1f(P3.u('uDim'), dim);
+    const fl = fr.flash || [0, 0, 0, 0];
+    gl.uniform4f(P3.u('uFlash'), fl[0], fl[1], fl[2], fl[3]);
     gl.bindVertexArray(this.pv);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);

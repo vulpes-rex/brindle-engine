@@ -37,7 +37,8 @@ The build is a single page with its script inline, plus a `packs/` folder it fet
 engine/            the runtime; plain ES modules, no dependencies
   game.js          front door: start(content). Areas, modes, scripts, saving, the frame loop
   field.js         walking, talking, using things
-  battle.js        turn-based battles, played from data
+  battle.js        turn-based battles, played from data, and the battle camera
+  fx.js            battle effects: glows, sparks, lightning, crystals, glyphs (pure; the gen look draws them)
   script.js        the script runner (pure; also checks scripts at build time)
   save.js          one save slot in the browser's storage (pure)
   nav.js           walk maps: blocked cells, ground height, routes
@@ -122,12 +123,21 @@ The engine sets one flag itself: `moved`, the first time the leader walks.
 Battles are data too. A skill or foe action is a move plus timed hits:
 
 ```json
-"spark": { "name": "Spark", "mp": 4, "target": "foe", "move": ["step", 1.4], "dur": 0.95,
+"spark": { "name": "Spark", "mp": 4, "target": "foe", "move": ["step", 1.4], "dur": 1.9, "cast": "#b48cff",
            "text": "{user} calls a Spark down on the {target}!",
-           "hits": [{ "at": 0.36, "power": 1.5, "magic": true, "fx": "burst", "color": "#7ff" }] }
+           "hits": [{ "at": 0.75, "fx": "bolts", "color": "#b48cff", "screen": 0.35 },
+                    { "at": 0.95, "power": 1.5, "magic": true, "flash": [0.75, 0.55, 1] }] }
 ```
 
-The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill, scene or pack file).
+Battles are shown the way Golden Sun shows its own. The camera sits low behind the party with the foes up and to the left,
+and swings to whoever acts, then to what they act on. An action with a `cast` colour has its user gather power (a turning
+glyph underfoot, a column of light, rising sparks) until its first hit, and the scene dims while it plays out. A hit's `fx`
+is one of the engine's effects, tinted by `color`: `slash`, `burst`, `bolts` (lightning and crystals of light), `heal`
+(a column, falling sparkles, rising rings), `ward`, `shard` (a bolt from the user), or `quake` and `hum`, which play once
+for all the targets. `screen` flashes the whole picture and `flash` tints the one hit. Blows with no effect of their own
+get a small spray of sparks; a beaten foe flickers, flares and comes apart.
+
+The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill, effect, scene or pack file).
 
 ### Generated scenes
 

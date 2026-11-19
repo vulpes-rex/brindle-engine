@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkScript } from '../engine/script.js';
 import { makeSprites } from '../game/art/sprites.js';
+import { createFx } from '../engine/fx.js';
 
 const read = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 
@@ -55,6 +56,10 @@ export async function checkContent(root) {
     if (!sprites.includes(heroes[id].sprite)) out.push('heroes.json "' + id + '": no sprite called "' + heroes[id].sprite + '"');
     for (const s of heroes[id].skills) if (!skills[s]) out.push('heroes.json "' + id + '": no skill called "' + s + '"');
   }
+  // every effect an action names must be one the engine can play
+  const effects = createFx().presets;
+  for (const [file, acts] of [['skills.json', skills], ['foe-actions.json', foeActions]])
+    for (const id in acts) for (const h of acts[id].hits || []) if (h.fx && !effects.includes(h.fx)) out.push(file + ' "' + id + '": no effect called "' + h.fx + '"');
   for (const id in monsters) for (const r of monsters[id].ai) if (!foeActions[r.use]) out.push('monsters.json "' + id + '": no foe action called "' + r.use + '"');
   return out;
 }

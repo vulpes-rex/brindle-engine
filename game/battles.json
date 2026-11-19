@@ -2,7 +2,6 @@
   "underhall": {
     "area": "underhall",
     "ground": 1.0,
-    "camera": { "focus": [0.5, 5.6, 2.5], "yaw": 0 },
     "foes": [{ "type": "mossback", "at": [-12, -4.5] }, { "type": "wisp", "at": [-7, 7.5] }],
     "intro": "A Mossback and a Hum Wisp block the stair!",
     "wonMsg": "Victory! The humming fades from the hall.",

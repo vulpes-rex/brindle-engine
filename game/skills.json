@@ -1,6 +1,6 @@
 {
   "cleave": { "name": "Cleave", "mp": 4, "target": "foes", "move": ["strike", -2.5, 1.5], "dur": 1.15, "text": "{user} sweeps a blade through all of them!", "hits": [{ "at": 0.42, "power": 0.75, "fx": "slash", "shake": 0.5 }] },
-  "wall": { "name": "Shield Wall", "mp": 3, "target": "self", "move": ["step", 1.6], "dur": 0.95, "text": "{user} raises a Shield Wall. Damage is halved for two rounds.", "hits": [{ "at": 0.3, "wall": 2 }] },
-  "spark": { "name": "Spark", "mp": 4, "target": "foe", "move": ["step", 1.4], "dur": 0.95, "text": "{user} calls a Spark down on the {target}!", "hits": [{ "at": 0.36, "power": 1.5, "magic": true, "fx": "burst", "color": "#7ff", "flash": [0.5, 1, 0.95] }] },
-  "mend": { "name": "Mend", "mp": 5, "target": "ally", "move": ["step", 1.0], "dur": 0.95, "text": "{user} mends {target}.", "ask": "Mend: restores 34 HP. Who?", "hits": [{ "at": 0.36, "heal": 34 }] }
+  "wall": { "name": "Shield Wall", "mp": 3, "target": "self", "move": ["step", 1.6], "dur": 1.5, "cast": "#9cc8ff", "text": "{user} raises a Shield Wall. Damage is halved for two rounds.", "hits": [{ "at": 0.7, "wall": 2, "color": "#9cc8ff" }] },
+  "spark": { "name": "Spark", "mp": 4, "target": "foe", "move": ["step", 1.4], "dur": 1.9, "cast": "#b48cff", "text": "{user} calls a Spark down on the {target}!", "hits": [{ "at": 0.75, "fx": "bolts", "color": "#b48cff", "screen": 0.35 }, { "at": 0.95, "power": 1.5, "magic": true, "flash": [0.75, 0.55, 1] }] },
+  "mend": { "name": "Mend", "mp": 5, "target": "ally", "move": ["step", 1.0], "dur": 1.75, "cast": "#8ff5c8", "text": "{user} mends {target}.", "ask": "Mend: restores 34 HP. Who?", "hits": [{ "at": 0.7, "fx": "heal", "color": "#8ff5c8" }, { "at": 1.05, "heal": 34 }] }
 }
