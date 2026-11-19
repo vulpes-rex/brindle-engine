@@ -39,6 +39,12 @@ SOFTWARE.
 
 The page asks Google Fonts for Pixelify Sans (SIL Open Font License 1.1) and falls back to a system monospace face.
 
+## Generated art
+
+The cast's sprites (`art/pixellab/`, baked into `packs/sprites`) were generated with PixelLab (https://www.pixellab.ai)
+from the prompts in `art/pixellab/cast.json`, and then given selective outlines by `tools/bake-sprites.mjs`. Use of
+PixelLab's output is governed by its terms of service.
+
 ## Build tool
 
 esbuild (MIT) bundles the engine and the game; it is a development dependency only.

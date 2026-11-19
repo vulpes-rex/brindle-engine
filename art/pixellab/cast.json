@@ -1,0 +1,22 @@
+{
+  "about": "The cast, generated with PixelLab (tools/pixellab.mjs). Art direction: Xenogears-era field sprites (soft painted pixel shading, no black outlines) wearing fantasy class costumes in the manner of Granblue Fantasy's class art (steel plate with gold trim, layered cloth, capes in crimson, navy and teal).",
+  "style": "JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": { "size": 64, "view": "low top-down", "outline": "selective outline", "detail": "high detail" },
+  "battle": {
+    "about": "Battle animations (tools/pixellab.mjs animate), drawn only for the facings a battle shows: the camera sits behind the party with the foes up and to the left.",
+    "directions": ["north", "north-west"],
+    "frames": 8,
+    "idle": { "template_action": "idle breathing" },
+    "attack": { "action": "a quick weapon attack: steps in and strikes forward, then returns to a ready stance" },
+    "cast": { "action": "raises both hands overhead as magic light gathers, holding the pose" },
+    "hurt": { "action": "recoils backward from a heavy blow, then steadies" }
+  },
+  "cast": {
+    "hero": { "seed": 1101, "battle": { "attack": "slashes his longsword forward in a quick diagonal cut, then returns to a ready stance", "cast": "raises his free hand overhead as light gathers around him, holding the pose" }, "description": "Tam, a young swordsman with short tousled brown hair, a teal tunic under a light steel breastplate with gold trim, a crimson scarf, dark plum trousers, brown leather boots, a longsword sheathed at the hip" },
+    "elder": { "seed": 1102, "battle": { "attack": "swings her staff forward in a short arc, then returns to stance", "cast": "raises her staff high with both hands, channelling magic, holding the pose" }, "description": "Elder Maren, an elderly woman cleric with long silver-white hair, a violet robe with gold embroidery, a white and gold mantle over her shoulders, holding a tall wooden staff topped with a gold ring" },
+    "merchant": { "seed": 1103, "description": "Odo, a cheerful stocky merchant with a short dark beard, a red cloth cap, a mustard-yellow vest over a cream shirt, a brown apron and a leather satchel" },
+    "girl": { "seed": 1104, "description": "Pip, a lively little village girl with a ginger bob, a cream blouse, a blue pinafore skirt, a green neckerchief and brown shoes" },
+    "guard": { "seed": 1105, "battle": { "attack": "bashes forward with his round shield, then steps back to a guard stance", "cast": "plants his feet and raises his shield before him, bracing, holding the pose" }, "description": "Bram, a sturdy village guard in steel-grey plate armour with gold trim, a blue soldier's cap with a short brim, a navy cape, a round shield on his back" },
+    "keeper": { "seed": 1106, "description": "Keeper Ansel, an old lighthouse keeper with white hair and a trimmed white beard, a navy wool sea coat with brass buttons, a navy cap with a gold band, carrying a small brass lantern" }
+  }
+}

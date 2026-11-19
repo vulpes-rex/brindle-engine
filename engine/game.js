@@ -1,28 +1,36 @@
 // The engine's front door. start(content) takes a game (its data and its sprite sheet) and runs it: it loads areas through
 // whichever look each one asks for, switches between walking and fighting, runs scripts, saves, and drives the frame loop.
 //
-// content: { game, areas, heroes, skills, monsters, foeActions, battles, makeSprites }  (see game/ for a worked example)
+// content: { game, areas, scenes, heroes, skills, monsters, foeActions, battles }  (see game/ for a worked example); the cast's
+// sprites are a pack the game names (game.sprites, baked by tools/bake-sprites.mjs)
 import { createUI } from './ui.js';
 import { texture } from './gl.js';
 import { GenLook } from './look-gen.js';
 import { InkLook } from './look-ink.js';
 import { createField } from './field.js';
 import { createBattle } from './battle.js';
+import { createMenu } from './menu.js';
 import { runScript, test } from './script.js';
 import { SaveStore } from './save.js';
 import { decodeMonster } from './monsters.js';
+import { loadSprites } from './sprites.js';
 
 const ZERO = new Float32Array(9);
 
-export function start(content) {
+export async function start(content) {
   const ui = createUI(document),
     $ = ui.$,
     cv = ui.el.cv,
     stage = ui.el.stage,
     gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
   if (!gl) return ui.fail('This needs WebGL 2, which this browser or device does not offer.');
-  const SP = content.makeSprites(),
-    atlas = texture(gl, SP.w, SP.h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(SP.data.buffer));
+  let SP;
+  try {
+    SP = await loadSprites(content.game.sprites);
+  } catch (e) {
+    return ui.fail('Could not load the sprites: ' + e.message);
+  }
+  const atlas = texture(gl, SP.w, SP.h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, SP.data);
   for (const id in content.areas) content.areas[id].id = id;
 
   // g: the running game, shared by the field, the battle and the looks
@@ -56,7 +64,7 @@ export function start(content) {
   const lookFor = kind => {
     if (!looks[kind]) {
       try {
-        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas) : new GenLook(gl, cv, stage, atlas);
+        looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas, { ppu: SP.ppu }) : new GenLook(gl, cv, stage, atlas, { scenes: content.scenes, ppu: SP.ppu });
       } catch (e) {
         throw new Error('the graphics shaders failed to start on this device (' + e.message + ')');
       }
@@ -152,6 +160,7 @@ export function start(content) {
       unsaved = true;
     },
     say: (lines, cb) => ui.say(lines, cb),
+    choose: (q, answers, cb) => ui.ask(q, answers, cb),
     battle: (id, cb) => g.battle.start(id, cb),
     go: (id, at, cb) => travel(id, at, cb)
   };
@@ -220,7 +229,7 @@ export function start(content) {
     ui.type(dt);
     stepAnims(dt);
     if (g.mode === 'battle') g.battle.update(dt);
-    else {
+    else if (!g.menu.open) {
       g.field.update(dt);
       sinceSave += dt;
       if (sinceSave > 12 && !g.busy) save(false);
@@ -234,20 +243,22 @@ export function start(content) {
     if (bt) g.battle.build(fr);
     else g.field.build(fr);
     g.look.draw(fr);
+    if (bt) g.battle.overlay();
   }
 
   g.field = createField(g);
   g.battle = createBattle(g);
+  g.menu = createMenu(g, save);
 
   // ---- input
   const tap = (nx, ny) => {
-    if (!live) return;
+    if (!live || g.menu.open) return;
     if (ui.talking()) return ui.advance();
     if (g.mode === 'battle') g.battle.tap(nx, ny);
     else if (!g.busy) g.field.tap(nx, ny);
   };
   const rot = d => {
-    if (live && g.mode === 'field') g.cam.yawT += (d * Math.PI) / 4;
+    if (live && g.mode === 'field' && !g.menu.open) g.cam.yawT += (d * Math.PI) / 4;
   };
   let pd = null;
   const ndc = e => {
@@ -256,7 +267,7 @@ export function start(content) {
   };
   stage.addEventListener('pointerdown', e => {
     // (buttons laid over the stage keep their own clicks: capturing the pointer would take them away)
-    if (e.target.closest('button')) return;
+    if (e.target.closest('button, #menu')) return;
     pd = { x: e.clientX, y: e.clientY, id: e.pointerId };
     try {
       stage.setPointerCapture(e.pointerId);
@@ -280,8 +291,10 @@ export function start(content) {
   stage.addEventListener('pointercancel', () => (pd = null));
   $('rl').addEventListener('click', () => rot(-1));
   $('rr').addEventListener('click', () => rot(1));
-  $('sv').addEventListener('click', () => {
-    if (live && !save(true) && (g.mode !== 'field' || g.busy)) ui.toast('Not just now');
+  $('mn').addEventListener('click', () => {
+    if (!live) return;
+    if (g.menu.open) g.menu.hide();
+    else if (!g.menu.show()) ui.toast('Not just now');
   });
   $('px').addEventListener('click', () => {
     if (!g.look || !g.look.canSmooth) return;
@@ -292,6 +305,12 @@ export function start(content) {
     g.look.setPixel(pixel);
   });
   window.addEventListener('keydown', e => {
+    if (ui.key(e.key)) return e.preventDefault(); // answering a question
+    if (e.key === 'Escape' || e.key === 'm') {
+      if (live && g.mode === 'field') g.menu.toggle();
+      return;
+    }
+    if (g.menu.open) return; // (the menu's own buttons take Enter and Space)
     if (e.key === ' ' || e.key === 'Enter') {
       if (ui.talking()) {
         ui.advance();

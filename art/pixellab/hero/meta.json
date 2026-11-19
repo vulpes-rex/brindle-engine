@@ -1,0 +1,12 @@
+{
+  "character_id": "4c792929-0c79-4756-ac70-6b3ca51f4a52",
+  "description": "Tam, a young swordsman with short tousled brown hair, a teal tunic under a light steel breastplate with gold trim, a crimson scarf, dark plum trousers, brown leather boots, a longsword sheathed at the hip. JRPG field sprite in the style of Xenogears on the PlayStation: soft painterly pixel shading, no black outlines (dark lines are deep shades of the colours beside them), muted rich palette, slender anime proportions about four heads tall, ornate fantasy class costume with layered cloth and gold trim, standing relaxed.",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "outline": "selective outline",
+    "detail": "high detail"
+  },
+  "seed": 1101,
+  "made": "2026-11-19T03:35:27.720Z"
+}

@@ -1,5 +1,6 @@
 // The cast, drawn by code: each character as 4 walk frames x 5 facings (S, SE, E, NE, N; the west side is mirrored), a knocked-out
-// frame each, and the little icons that bob over things you can use. All original pixel art.
+// frame each, and the little icons that bob over things you can use. All original pixel art. Not loaded by the game itself:
+// tools/bake-sprites.mjs bakes it (or the PixelLab art in art/pixellab/) into the sprite pack the game loads.
 export function makeSprites(){
 const SW=24,SH=32,DIRS=5,FR=4;
 const CH=[

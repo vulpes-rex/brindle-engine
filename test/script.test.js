@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { runScript, test as cond, checkScript } from '../engine/script.js';
 
 // a host that records what a script asked for; says, battles and travel finish on the next tick, as the real ones finish later
-function host(flags = {}, items = {}) {
+function host(flags = {}, items = {}, answers = []) {
   const log = [];
   return {
     log,
+    // (answers: which answer to pick at each choice, in turn)
+    choose: (q, opts, cb) => (log.push('choose ' + (q ? q[1] : '-') + ' [' + opts.join('/') + ']'), setTimeout(() => cb(answers.shift() || 0), 0)),
     flags,
     items,
     flag: n => !!flags[n],
@@ -74,4 +76,43 @@ test('checkScript finds what a script refers to that does not exist', () => {
   assert.deepEqual(checkScript([['A', 'hi'], { give: 'tonic' }, { battle: 'b1' }, { go: 'isle', at: 'jetty' }, { case: [['x', []], [null, [{ set: 'y' }]]] }], 's', known), []);
   const bad = checkScript([['A'], { give: 'gold' }, { battle: 'b2' }, { go: 'isle', at: 'cave' }, { go: 'moon', at: 'x' }, { hop: 1 }, { if: { has: 'gem' }, then: [] }], 's', known);
   assert.equal(bad.length, 7);
+});
+
+test('a choice: the line before it is its question, the answer runs its own script, then the rest', async () => {
+  const s = [
+    ['Maren', 'Hello.'],
+    ['Maren', 'Will you help?'],
+    { choose: [['Yes.', [{ set: 'asked' }, ['Maren', 'Thank you.']]], ['No.', [['Maren', 'Later, then.']]]] },
+    ['', 'She turns back to the well.']
+  ];
+  let h = host({}, {}, [0]);
+  await run(s, h);
+  assert.deepEqual(h.log, ['say Hello.', 'choose Will you help? [Yes./No.]', 'set asked', 'say Thank you.', 'say She turns back to the well.']);
+  h = host({}, {}, [1]);
+  await run(s, h);
+  assert.deepEqual(h.log, ['say Hello.', 'choose Will you help? [Yes./No.]', 'say Later, then.', 'say She turns back to the well.']);
+});
+
+test('answers with a condition are offered only while it holds; with none open the question is just said', async () => {
+  const s = [['Odo', 'Anything?'], { choose: [['An apple', [{ give: 'apple' }], { has: 'coin' }], ['Nothing', []]] }];
+  let h = host({}, {}, [0]);
+  await run(s, h);
+  assert.deepEqual(h.log, ['choose Anything? [Nothing]']);
+  h = host({}, { coin: 1 }, [0]);
+  await run(s, h);
+  assert.deepEqual(h.log, ['choose Anything? [An apple/Nothing]', 'give apple 1']);
+  h = host();
+  await run([['Odo', 'Closed.'], { choose: [['Buy', [], 'open']] }, { stop: true }, ['', 'never']], h);
+  assert.deepEqual(h.log, ['say Closed.']);
+  // a choice with no question, and stop inside an answer ends the whole script
+  h = host({}, {}, [0]);
+  await run([{ choose: [['Leave', [{ stop: true }]]] }, ['', 'never']], h);
+  assert.deepEqual(h.log, ['choose - [Leave]']);
+});
+
+test('checkScript looks inside choices', () => {
+  const known = { items: ['tonic'], battles: [], spawns: {} };
+  assert.deepEqual(checkScript([{ choose: [['Yes', [{ give: 'tonic' }]], ['No', [], 'asked']] }], 's', known), []);
+  const bad = checkScript([{ choose: [] }, { choose: [['Yes', 'not a script'], ['Odd', [{ give: 'gem' }], { has: 'gem' }]] }], 's', known);
+  assert.equal(bad.length, 4);
 });

@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.log
+
+# PixelLab API token (tools/pixellab.mjs)
+.pixellab-token*

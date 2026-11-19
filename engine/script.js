@@ -7,11 +7,14 @@
 //   {"give": "item", "n": 2}                   (a negative n takes items away)
 //   {"battle": "id"}                           fight; the battle's own "won" / "lost" scripts run afterwards
 //   {"go": "area", "at": "spawn"}              travel to another area
+//   {"choose": [["Answer", script], ["Answer", script, cond], ...]}
+//                                              ask: the line just before is the question and stays up; each answer runs its
+//                                              own script (one with a condition is offered only while it holds)
 //   {"stop": true}                             end the whole script here
 //
 // A condition is a flag name ("key"), its negation ("!key"), {"all": [...]}, {"any": [...]} or {"has": "item", "n": 1}.
 //
-// The runner knows nothing about the game: a host supplies flag/set/has/give/say/battle/go.
+// The runner knows nothing about the game: a host supplies flag/set/has/give/say/choose/battle/go.
 
 export function test(cond, host) {
   if (cond == null) return true;
@@ -24,6 +27,17 @@ export function test(cond, host) {
 
 export function runScript(script, host, done) {
   const stack = [{ s: script || [], i: 0 }];
+  // the choice at the top frame's current step, with its question (a line) or null
+  const ask = q => {
+    const f = stack[stack.length - 1],
+      st = f.s[f.i++],
+      open = st.choose.filter(o => test(o[2], host));
+    if (!open.length) return q ? host.say([q], next) : next();
+    host.choose(q, open.map(o => o[0]), k => {
+      stack.push({ s: open[k][1] || [], i: 0 });
+      next();
+    });
+  };
   const next = () => {
     for (;;) {
       const f = stack[stack.length - 1];
@@ -39,9 +53,13 @@ export function runScript(script, host, done) {
       if (Array.isArray(st)) {
         const lines = [];
         while (f.i < f.s.length && Array.isArray(f.s[f.i])) lines.push(f.s[f.i++]);
-        host.say(lines, next);
+        // (a line just before a choice is its question: it is asked with the choice, not before it)
+        const q = f.s[f.i] && f.s[f.i].choose ? lines.pop() : null;
+        if (lines.length) host.say(lines, q ? () => ask(q) : next);
+        else ask(q);
         return;
       }
+      if (st.choose) return ask(null);
       f.i++;
       if (st.case) {
         const hit = st.case.find(c => test(c[0], host));
@@ -90,6 +108,16 @@ export function checkScript(script, where, known) {
         cond(st.if, here);
         if (st.then) walk(st.then, here + '.then');
         if (st.else) walk(st.else, here + '.else');
+      } else if (st.choose) {
+        if (!Array.isArray(st.choose) || !st.choose.length) out.push(here + ': choose needs a list of answers');
+        else
+          st.choose.forEach((o, k) => {
+            if (!Array.isArray(o) || typeof o[0] !== 'string' || !Array.isArray(o[1])) out.push(here + '.choose' + k + ': an answer is ["text", script] or ["text", script, cond]');
+            else {
+              cond(o[2], here + '.choose' + k);
+              walk(o[1], here + '.choose' + k);
+            }
+          });
       } else if (st.set || st.unset || st.stop) {
         /* nothing to check */
       } else if (st.give) {

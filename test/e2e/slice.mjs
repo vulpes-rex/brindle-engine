@@ -1,10 +1,20 @@
 // node test/e2e/slice.mjs [url]
 // Plays the first slice in a headless browser: walk and talk in the village, take the road to Lighthouse rock (the other look),
 // climb to the keeper, row back, reload and continue from the save, then win the battle under the bluff.
-// Needs Playwright and a Chrome; set PLAYWRIGHT (module path) and CHROME (binary) if they are not in the usual places.
+// Needs Playwright (or playwright-core, a dev dependency, with the Chrome installed on this machine); set PLAYWRIGHT (module
+// path) and CHROME (binary) if they are not in the usual places.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
+const load = names => {
+  for (const n of names)
+    try {
+      return [require(n), n];
+    } catch (e) {}
+  throw new Error('Playwright is not installed: npm install, or set PLAYWRIGHT');
+};
+const [{ chromium }, pwName] = load(process.env.PLAYWRIGHT ? [process.env.PLAYWRIGHT] : ['playwright', 'playwright-core']);
+// (playwright-core brings no browser of its own: use the installed Chrome)
+const browser = process.env.CHROME ? { executablePath: process.env.CHROME } : pwName === 'playwright-core' ? { channel: 'chrome' } : {};
 const URL = process.argv[2] || 'http://localhost:8080/index.html',
   SHOTS = process.env.SHOTS || null;
 let failed = 0;
@@ -13,7 +23,7 @@ const ok = (c, m) => {
   if (!c) failed++;
 };
 
-const br = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+const br = await chromium.launch({ ...browser, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
 const pg = await ctx.newPage();
 const errs = [];
@@ -33,9 +43,11 @@ const until = async (expr, secs = 30) => {
   }
   return false;
 };
-const talkThrough = async () => {
+// read every line; a question is answered by tapping its first answer (or the one given)
+const talkThrough = async (answer = 0) => {
   for (let i = 0; i < 40 && (await pg.evaluate(() => window.__game.info().talking)); i++) {
-    await pg.evaluate(() => (window.__game.ui.advance(), window.__game.ui.advance()));
+    if (await pg.evaluate(() => window.__game.ui.asking())) await pg.click('#cho button[data-k="' + answer + '"]');
+    else await pg.evaluate(() => (window.__game.ui.advance(), window.__game.ui.advance()));
     await pg.waitForTimeout(30);
   }
 };
@@ -60,13 +72,29 @@ await pg.evaluate(() => window.__game.step(1.5));
 const j = await info();
 ok(Math.hypot(j.x - i.x, j.z - i.z) > 3 && j.flags.includes('moved'), 'tapping the ground walks there (' + Math.hypot(j.x - i.x, j.z - i.z).toFixed(1) + ' units)');
 
-// talk to the elder: sets the first quest flag and saves
+// talk to the elder: she asks; "Not just now" leaves the quest alone, "I'll find the key" takes it, and that is saved
 ok(await use('actors', 'elder'), 'the leader walks up to the elder and a conversation opens');
-await shot('2-elder');
-await talkThrough();
+await talkThrough(1);
 i = await info();
-ok(i.flags.includes('asked') && !i.busy, 'the elder’s script set its flag and ended');
+ok(!i.flags.includes('asked') && !i.busy, 'turning the elder down sets nothing');
+ok(await use('actors', 'elder'), 'she asks again');
+for (let k = 0; k < 10 && !(await pg.evaluate(() => window.__game.ui.asking())); k++) await pg.evaluate(() => (window.__game.ui.advance(), window.__game.step(0.5)));
+ok(await pg.evaluate(() => [...document.querySelectorAll('#cho button')].map(b => b.textContent).join('|') === "I'll find the key.|Not just now."), 'her question comes with two answers');
+await shot('2-elder');
+await talkThrough(0);
+i = await info();
+ok(i.flags.includes('asked') && !i.busy, 'taking the quest set its flag and the script ended');
 ok(await pg.evaluate(() => { const s = window.__game.store.load(); return !!s && s.flags.asked === true && s.area === 'brindlebrook'; }), 'that was saved');
+
+// the field menu: what the party carries and who they are, with the world holding still meanwhile
+await pg.click('#mn');
+ok(await pg.evaluate(() => window.__game.menu.open && /Tonic\s*×3/.test(document.querySelector('#menu .mbody').innerText)), 'the menu opens on the items: three tonics');
+await pg.click('#menu [data-m="party"]');
+ok(await pg.evaluate(() => document.querySelectorAll('#menu .chip').length === 3 && document.querySelectorAll('#menu img.face').length === 3), 'the party page shows the three heroes');
+await shot('2b-menu');
+ok(await pg.evaluate(() => { const g = window.__game, h = g.field.hero, a = [h.x, h.z]; g.field.keys.ArrowUp = true; g.step(1); g.field.keys.ArrowUp = false; return h.x === a[0] && h.z === a[1]; }), 'nobody moves while it is open');
+await pg.keyboard.press('Escape');
+ok(await pg.evaluate(() => !window.__game.menu.open), 'Escape closes it');
 
 // the road: a door to the other area, drawn by the other look
 ok(await use('props', 'road'), 'the road by the south gate can be used');
@@ -87,6 +115,8 @@ const walkKey = key => pg.evaluate(key => { const g = window.__game, h = g.field
   const ax = g.look.axes(g.cam.yaw); return (h.x - a[0]) * ax.right[0] + (h.z - a[1]) * ax.right[1]; }, key);
 const wl = await walkKey('ArrowLeft'), wr = await walkKey('ArrowRight');
 ok(wl < 0.2 && wr > -0.2 && (wl < -1 || wr > 1), 'the arrow keys walk toward the left and right of the picture (' + wl.toFixed(1) + ', ' + wr.toFixed(1) + ' units)');
+// (where the leader lands on the picture is read from the camera of the last frame drawn: let a frame or two be drawn first)
+await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 const hp = await pg.evaluate(() => { const g = window.__game, h = g.field.hero; return g.look.project(h.x, h.y, h.z); });
 ok(Math.abs(hp[0]) < 0.25 && hp[1] > -0.6 && hp[1] < 0.2, 'the camera follows the leader (' + hp.map(v => v.toFixed(2)).join(', ') + ')');
 ok(await pg.evaluate(() => document.getElementById('px').disabled), 'the Pixel switch is off here: this look is always pixel art');

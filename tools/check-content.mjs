@@ -1,9 +1,9 @@
-// Looks over the game's data before a build: every script step, flag test, spawn, sprite, battle and pack must refer to
+// Looks over the game's data before a build: every script step, flag test, spawn, sprite, battle, scene and pack must refer to
 // something that exists. Returns a list of problems (empty when all is well).
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkScript } from '../engine/script.js';
-import { makeSprites } from '../game/art/sprites.js';
+import { createFx } from '../engine/fx.js';
 
 const read = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 
@@ -17,7 +17,9 @@ export async function checkContent(root) {
     monsters = read(path.join(G, 'monsters.json')),
     foeActions = read(path.join(G, 'foe-actions.json')),
     battles = read(path.join(G, 'battles.json')),
-    sprites = makeSprites().names,
+    sheet = path.join(root, game.sprites || '', 'sheet.json'),
+    sprites = fs.existsSync(sheet) ? Object.keys(read(sheet).cast) : [],
+    scenes = fs.readdirSync(path.join(G, 'scenes')).filter(f => f.endsWith('.js')).map(f => f.slice(0, -3)),
     out = [],
     known = { items: Object.keys(game.items || {}), battles: Object.keys(battles), spawns: {} };
   for (const id in areas) known.spawns[id] = Object.keys(areas[id].spawns || {});
@@ -28,6 +30,7 @@ export async function checkContent(root) {
   for (const id of game.party) if (!heroes[id]) out.push('game.json: party member "' + id + '" is not in heroes.json');
   for (const id of game.preload || []) if (!areas[id]) out.push('game.json: preload area "' + id + '" does not exist');
   for (const p of [game.monsterPack]) if (!fs.existsSync(path.join(root, p))) out.push('game.json: missing file ' + p);
+  for (const f of ['sheet.json', 'sheet.png']) if (!fs.existsSync(path.join(root, game.sprites || '?', f))) out.push('game.json: the sprite pack has no ' + f + ' (tools/bake-sprites.mjs makes it)');
 
   for (const id in areas) {
     const a = areas[id],
@@ -35,7 +38,7 @@ export async function checkContent(root) {
       scripts = a.scripts || {};
     if (!['gen', 'ink'].includes(a.look)) out.push(at + ': look must be "gen" or "ink"');
     if (a.look === 'ink') for (const f of ['pack.json', 'splats.png', 'lut.png']) if (!fs.existsSync(path.join(root, a.pack || '', f))) out.push(at + ': missing ' + (a.pack || '?') + '/' + f);
-    if (a.look === 'gen' && !Number.isInteger(a.scene)) out.push(at + ': a generated area needs a scene index');
+    if (a.look === 'gen' && !scenes.includes(a.scene)) out.push(at + ': no scene called "' + a.scene + '" in game/scenes/');
     for (const who of (a.actors || []).concat(a.props || [])) {
       if (!who.poi && !who.at) out.push(at + ': "' + who.id + '" needs a place (poi or at)');
       if (who.script && !scripts[who.script]) out.push(at + ': "' + who.id + '" uses a script that does not exist: ' + who.script);
@@ -54,6 +57,10 @@ export async function checkContent(root) {
     if (!sprites.includes(heroes[id].sprite)) out.push('heroes.json "' + id + '": no sprite called "' + heroes[id].sprite + '"');
     for (const s of heroes[id].skills) if (!skills[s]) out.push('heroes.json "' + id + '": no skill called "' + s + '"');
   }
+  // every effect an action names must be one the engine can play
+  const effects = createFx().presets;
+  for (const [file, acts] of [['skills.json', skills], ['foe-actions.json', foeActions]])
+    for (const id in acts) for (const h of acts[id].hits || []) if (h.fx && !effects.includes(h.fx)) out.push(file + ' "' + id + '": no effect called "' + h.fx + '"');
   for (const id in monsters) for (const r of monsters[id].ai) if (!foeActions[r.use]) out.push('monsters.json "' + id + '": no foe action called "' + r.use + '"');
   return out;
 }

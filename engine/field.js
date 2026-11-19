@@ -3,11 +3,11 @@
 // list of sprites, shadows and rings to draw.
 import { test } from './script.js';
 
-// which sprite row and mirror to show for a heading, seen from the camera: eight ways from five drawn facings
-const FACE = [[2, 0], [3, 0], [4, 0], [3, 1], [2, 1], [1, 1], [0, 0], [1, 0]];
+// which sprite row to show for a heading, seen from the camera: the eighth of a turn it points to on the picture (rows run
+// south, south-east, east, ... so screen-right, the first eighth, is row 2)
 export function facing(hx, hz, ax) {
   const a = Math.atan2(hx * ax.fwd[0] + hz * ax.fwd[1], hx * ax.right[0] + hz * ax.right[1]);
-  return FACE[((Math.round(a / 0.7854) % 8) + 8) % 8];
+  return (((Math.round(a / 0.7854) % 8) + 10) % 8);
 }
 
 const SPEED = 13, // game units a second
@@ -15,7 +15,7 @@ const SPEED = 13, // game units a second
 
 export function createField(g) {
   const SP = g.SP,
-    hero = { x: 0, z: 0, y: 0, hx: 0, hz: 1, fr: 1, dist: 0, path: null, pi: 0, cb: null, moving: false },
+    hero = { x: 0, z: 0, y: 0, hx: 0, hz: 1, dist: 0, path: null, pi: 0, cb: null, moving: false },
     keys = {};
   let rt = null,
     nav = null,
@@ -79,7 +79,7 @@ export function createField(g) {
       const f = nav.nearFree(x, z, 8, free);
       if (f) [x, z] = f;
     }
-    Object.assign(hero, { x, z, y: nav.gh(x, z), path: null, pi: 0, cb: null, moving: false, fr: 1 });
+    Object.assign(hero, { x, z, y: nav.gh(x, z), path: null, pi: 0, cb: null, moving: false });
     if (at.face) {
       const l = Math.hypot(at.face[0], at.face[1]) || 1;
       hero.hx = at.face[0] / l;
@@ -162,17 +162,19 @@ export function createField(g) {
   const shown = th => th.name !== undefined || th.show === undefined || test(th.show, g.host);
 
   function hitThing(nx, ny) {
-    const u = g.look.px;
+    // (a person is hit on their figure; a thing within its "hit", which is counted in fifths of a game unit)
+    const u = g.look.px,
+      fifth = (u * SP.ppu) / 5;
     let best = null,
       bz = 1e9;
     for (const th of actors.concat(props)) {
       let hit;
       if (th.name !== undefined) {
         const p = g.look.project(th.x, th.y, th.z);
-        hit = Math.abs(nx - p[0]) < 15 * u && ny > p[1] - 5 * u && ny < p[1] + 34 * u;
+        hit = Math.abs(nx - p[0]) < (SP.wide / 2 + 7) * u && ny > p[1] - 5 * u && ny < p[1] + (SP.tall + 4) * u;
       } else {
         const q = g.look.project(th.x, th.y + th.h, th.z);
-        hit = Math.hypot(nx - q[0], ny - q[1]) < th.hr * u;
+        hit = Math.hypot(nx - q[0], ny - q[1]) < th.hr * fifth;
       }
       if (hit) {
         const d = Math.hypot(th.x - hero.x, th.z - hero.z);
@@ -259,7 +261,6 @@ export function createField(g) {
         }
       }
     } else hero.moving = false;
-    hero.fr = hero.moving ? Math.floor(hero.dist / 1.55) % 4 : 1;
     const gy = nav.gh(hero.x, hero.z);
     if (gy > -900) hero.y += (gy - hero.y) * Math.min(1, dt * 16);
   }
@@ -317,27 +318,22 @@ export function createField(g) {
   // what to draw this frame
   function build(fr) {
     const ax = g.look.axes(g.cam.yaw),
-      SW = SP.SW,
-      SH = SP.SH,
-      body = (ci, frame, hx, hz) => {
-        const f = facing(hx, hz, ax);
-        return { rect: [(ci * SP.FR + frame) * SW, f[0] * SH, SW, SH], flip: f[1] };
-      };
+      body = (ci, moving, dist, hx, hz) => ({ rect: SP.frame(ci, facing(hx, hz, ax), moving, dist), flip: 0 });
     fr.blobs.push({ x: hero.x, y: hero.y + 0.25, z: hero.z, r: 1.3 });
     for (const n of actors) fr.blobs.push({ x: n.x, y: n.y + 0.25, z: n.z, r: 1.3 });
     if (mark) {
       const a = 0.5 + 0.5 * Math.sin(g.t * 10);
       fr.rings.push({ x: mark[0], y: nav.gh(mark[0], mark[1]) + 0.3, z: mark[1], r: 1.45 + 0.3 * a, col: [1, 0.93 + 0.05 * a, 0.62 + 0.25 * a] });
     }
-    fr.sprites.push(Object.assign(body(g.leader, hero.fr, hero.hx, hero.hz), { x: hero.x, y: hero.y, z: hero.z, tint: g.tintAt(hero.x, hero.z), offY: -1, bias: 0.66, sil: true }));
-    for (const n of actors) fr.sprites.push(Object.assign(body(n.ci, n.moving ? Math.floor(n.dist / 1.3) % 4 : 1, n.fx, n.fz), { x: n.x, y: n.y, z: n.z, tint: g.tintAt(n.x, n.z), offY: -1, bias: 0.66 }));
+    fr.sprites.push(Object.assign(body(g.leader, hero.moving, hero.dist, hero.hx, hero.hz), { x: hero.x, y: hero.y, z: hero.z, tint: g.tintAt(hero.x, hero.z), offY: SP.offY, bias: 0.66, sil: true }));
+    for (const n of actors) fr.sprites.push(Object.assign(body(n.ci, n.moving, n.dist, n.fx, n.fz), { x: n.x, y: n.y, z: n.z, tint: g.tintAt(n.x, n.z), offY: SP.offY, bias: 0.66 }));
     if (!g.busy) {
       // the little bobbing mark over what can be used nearby
       const bob = Math.floor(g.t * 2.2) % 2;
       for (const th of actors.concat(props)) {
         if (Math.hypot(th.x - hero.x, th.z - hero.z) > 17 || !shown(th)) continue;
         const person = th.name !== undefined;
-        fr.sprites.push({ rect: SP.icons[person ? 'talk' : th.icon], flip: 0, x: th.x, y: th.y + (person ? 0 : th.h), z: th.z, tint: [1, 1, 1], offY: (person ? 33 : 6) + bob, bias: 5.5 });
+        fr.sprites.push({ rect: SP.icons[person ? 'talk' : th.icon], flip: 0, x: th.x, y: th.y + (person ? 0 : th.h), z: th.z, tint: [1, 1, 1], offY: (person ? SP.tall + 3 : 6) + bob, bias: 5.5 });
       }
     }
   }
