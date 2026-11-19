@@ -250,6 +250,10 @@ export function createBattle(g) {
   }
 
   // quiet: the action's own effect already shows the blow
+  // a hero's pose: one of the sprite pack's battle animations (attack, cast, hurt) played once over dur seconds, or held on
+  // its last frame until the action ends
+  const pose = (u, name, dur, hold) => u.side === 'hero' && (u.pose = { name, t0: g.t, dur, hold: !!hold });
+
   function hit(tg, v, col, quiet) {
     tg.hp = Math.max(0, tg.hp - v);
     tg.fl = 1;
@@ -265,7 +269,7 @@ export function createBattle(g) {
       if (tg.hp <= 0) {
         tg.ko = true;
         tg.guard = false;
-      }
+      } else pose(tg, 'hurt', 0.45);
     }
     renderParty();
   }
@@ -291,6 +295,7 @@ export function createBattle(g) {
       play('cast', u, { color: c, dur: first });
       fx.dimTo(0.55);
       u.glow = c;
+      pose(u, 'cast', Math.max(0.35, first * 0.7), true);
       steps.push({ at: first, fn: () => (u.glow = null) }, { at: Math.max(first, dur - 0.3), fn: () => fx.dimTo(0) });
       B.act.steps.sort((a, b) => a.at - b.at);
     }
@@ -347,11 +352,12 @@ export function createBattle(g) {
           }
         }
       }));
+    if (act.move && act.move[0] === 'strike') steps.push({ at: 0.28, fn: () => pose(u, 'attack', 0.45) });
     run(movesOf(act.move, u, tg), steps, act.dur, fmt(act.text, u, tg), { user: u, targets: targets(), cast: act.cast });
   }
 
   function doAttack(u, f) {
-    run(strike(u, f.x + f.rad + 1.8, f.z + 0.4), [{ at: 0.42, fn: () => (play('slash', f), hit(f, damage(u, 1, f, false), null, true)) }], 1.15, u.name + ' attacks the ' + f.name + '.', { user: u, targets: [f] });
+    run(strike(u, f.x + f.rad + 1.8, f.z + 0.4), [{ at: 0.28, fn: () => pose(u, 'attack', 0.45) }, { at: 0.42, fn: () => (play('slash', f), hit(f, damage(u, 1, f, false), null, true)) }], 1.15, u.name + ' attacks the ' + f.name + '.', { user: u, targets: [f] });
   }
   function doGuard(u) {
     u.guard = true;
@@ -360,7 +366,7 @@ export function createBattle(g) {
   }
   function doItem(u, tg) {
     g.items.tonic = Math.max(0, (g.items.tonic || 0) - 1);
-    run(stepIn(u, 1.2), [{ at: 0.25, fn: () => play('heal', tg, { color: '#8ff58a' }) }, { at: 0.45, fn: () => heal(tg, items().tonic.heal) }], 1.3, u.name + ' uses a Tonic on ' + (tg === u ? 'themself' : tg.name) + '.', { user: u, targets: [tg] });
+    run(stepIn(u, 1.2), [{ at: 0.05, fn: () => pose(u, 'cast', 0.4) }, { at: 0.25, fn: () => play('heal', tg, { color: '#8ff58a' }) }, { at: 0.45, fn: () => heal(tg, items().tonic.heal) }], 1.3, u.name + ' uses a Tonic on ' + (tg === u ? 'themself' : tg.name) + '.', { user: u, targets: [tg] });
   }
   function doSkill(u, sk, tg) {
     u.mp -= sk.mp;
@@ -556,6 +562,7 @@ export function createBattle(g) {
             u.run = false;
             u.hop = 0;
             u.glow = null;
+            if (u.pose && u.pose.hold) u.pose = null;
           }
         }
         afterAct();
@@ -643,14 +650,24 @@ export function createBattle(g) {
         fr.sprites.push({ rect: SP.ko(u.ci), flip: 0, x: u.x, y: GY, z: u.z, tint: [0.7, 0.72, 0.86], offY: SP.koOffY(u.ci), bias: 0.66 });
         continue;
       }
-      // seen from behind, facing whatever they are acting on (or the foes); at rest they breathe
-      const tg = a && a.user === u && a.targets[0] && a.targets[0] !== u ? a.targets[0] : null,
+      // seen from behind, facing whatever they are acting on (or the foes, and the foes while gathering power); a pose
+      // plays if there is one, else they walk, or at rest breathe (the sprite pack's idle, or a little bob without one)
+      const casting = a && a.user === u && a.cast && a.t < a.castEnd,
+        tg = a && a.user === u && !casting && a.targets[0] && a.targets[0] !== u ? a.targets[0] : null,
         to = tg ? [tg.x - u.x, tg.z - u.z] : [F[0] - u.x, F[1] - u.z],
         row = facing(to[0], to[1], ax),
+        p = u.pose && (u.pose.hold || t - u.pose.t0 < u.pose.dur) ? u.pose : null,
+        n = p ? SP.animLength(u.ci, p.name) : 0,
         idle = !u.run && !u.hop && !(a && a.user === u),
-        bob = idle && Math.sin(t * 3.3 + u.i * 1.9) > 0.2 ? 1 : 0,
         kb = u.kb * 0.9;
-      fr.sprites.push({ rect: SP.frame(u.ci, row, u.run, u.dist), flip: 0, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: SP.offY + bob, bias: 0.66 });
+      let an = p && !u.run && n ? SP.anim(u.ci, p.name, row, Math.floor(Math.min((t - p.t0) / p.dur, 0.999) * n)) : null,
+        bob = 0;
+      if (!an && idle && !p) {
+        const m = SP.animLength(u.ci, 'idle');
+        an = m ? SP.anim(u.ci, 'idle', row, Math.floor(t * 7 + u.i * 3) % m) : null;
+        if (!an) bob = Math.sin(t * 3.3 + u.i * 1.9) > 0.2 ? 1 : 0;
+      }
+      fr.sprites.push({ rect: an ? an.rect : SP.frame(u.ci, row, u.run, u.dist), flip: 0, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: (an ? an.offY : SP.offY) + bob, bias: 0.66 });
     }
   }
 

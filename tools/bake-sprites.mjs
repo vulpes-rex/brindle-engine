@@ -4,7 +4,10 @@
 // Each character comes from art/pixellab/<name>/ when it is there (rotations/<direction>.png and walk/<direction>/<n>.png, as
 // tools/pixellab.mjs downloads them), or else from the cast drawn by code (game/art/sprites.js); --code uses the drawn cast
 // for everyone. Every character gets eight facings (south first, clockwise: south, south-east, east, ... south-west), a
-// standing frame, a walk cycle and a knocked-out frame, lined up so their feet stand on the same row.
+// standing frame, a walk cycle and a knocked-out frame, lined up so their feet stand on the same row. Other animations
+// (anims/<name>/<direction>/<n>.png, such as the battle's idle, attack, cast and hurt) come along for the facings they were
+// made in, each as a strip of frames below the characters: cropped to what its frames use (around the canvas's middle, so
+// the figure stays centred), with the row its feet stand on.
 //
 // Generated art is given selective outlines on the way: a dark line pixel takes a deep shade of the colour beside it rather
 // than black (as Xenogears' sprites are drawn). --ppu sets sprite pixels per game unit; by default it is worked out so a
@@ -124,7 +127,20 @@ const chars = cast.map((name, ci) => {
     const n = Math.max(...rows.map(r => r.length));
     // (a direction short of walk frames repeats its last)
     for (const r of rows) while (r.length < n) r.push(r[r.length - 1]);
-    return { name, src: 'pixellab', rows, stand: 0, walk: n > 1 ? [...Array(n - 1).keys()].map(i => i + 1) : [0] };
+    // other animations, by name and then by the facing (row) they were made in
+    const anims = {},
+      animDir = path.join(dir, 'anims');
+    if (fs.existsSync(animDir))
+      for (const a of fs.readdirSync(animDir).sort()) {
+        anims[a] = {};
+        for (const d of fs.readdirSync(path.join(animDir, a)))
+          anims[a][ROWS.indexOf(d)] = fs
+            .readdirSync(path.join(animDir, a, d))
+            .filter(f => f.endsWith('.png'))
+            .sort((x, y) => parseInt(x) - parseInt(y))
+            .map(f => selout(readPng(path.join(animDir, a, d, f))));
+      }
+    return { name, src: 'pixellab', rows, anims, stand: 0, walk: n > 1 ? [...Array(n - 1).keys()].map(i => i + 1) : [0] };
   }
   return { name, src: 'code', rows: ROWS.map((d, row) => [0, 1, 2, 3].map(col => codeFrame(ci, row, col))), stand: 1, walk: [0, 1, 2, 3] };
 });
@@ -139,6 +155,39 @@ for (const c of chars)
     const k = ppu / 5;
     c.rows = c.rows.map(r => r.map(im => scale(im, k)));
   }
+for (const c of chars) c.anims = c.anims || {};
+
+// an animation's frames cropped together to what they use, kept centred on the canvas's middle
+function cropStrip(frames) {
+  const W = frames[0].w,
+    H = frames[0].h,
+    cx = W / 2,
+    s = frames.map(span);
+  let l = W,
+    r = 0;
+  for (const im of frames)
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (im.data[at(im, x, y) + 3] > 127) {
+          l = Math.min(l, x);
+          r = Math.max(r, x);
+        }
+  const half = Math.min(cx, Math.ceil(Math.max(cx - l, r + 1 - cx)) + 1),
+    x0 = Math.floor(cx - half),
+    top = Math.max(0, Math.min(...s.map(q => q.top)) - 1),
+    bottom = Math.min(H - 1, Math.max(...s.map(q => q.foot)) + 1),
+    w = 2 * half,
+    h = bottom - top + 1;
+  return {
+    foot: s[0].foot - top,
+    frames: frames.map(im => {
+      const o = blank(w, h);
+      for (let y = 0; y < h; y++) o.data.set(im.data.subarray(at(im, x0, top + y), at(im, x0 + w, top + y)), y * w * 4);
+      return o;
+    })
+  };
+}
+for (const c of chars) for (const byRow of Object.values(c.anims)) for (const row of Object.keys(byRow)) byRow[row] = cropStrip(byRow[row]);
 
 // one cell size for all, every character's feet on the same row
 const SW = Math.max(...chars.map(c => c.rows[0][0].w)),
@@ -150,14 +199,32 @@ const SW = Math.max(...chars.map(c => c.rows[0][0].w)),
   tops = chars.map((c, i) => span(c.rows[0][c.stand]).top + lift[i]),
   wide = Math.max(...chars.map(c => span(c.rows[0][c.stand]).wide));
 
-// ---- the sheet: each character a block of (frames x 8 facings); a strip of knocked-out frames and the icons below
+// ---- the sheet: each character a block of (frames x 8 facings); below, the other animations as strips, then the
+// knocked-out frames and the icons (kept within 2048 pixels across, which every WebGL 2 device can take)
 const cols = Math.max(...chars.map(c => c.rows[0].length)),
   per = Math.max(1, Math.min(chars.length, Math.floor(2048 / (cols * SW)))),
   blockW = cols * SW,
   blockH = ROWS.length * SH,
-  koY = Math.ceil(chars.length / per) * blockH,
+  stripY = Math.ceil(chars.length / per) * blockH,
+  strips = [];
+const stripH = Math.max(SH, ...chars.flatMap(c => Object.values(c.anims).flatMap(byRow => Object.values(byRow).map(s => s.frames[0].h)))),
+  sheetW = Math.max(per * blockW, ...chars.flatMap(c => Object.values(c.anims).flatMap(byRow => Object.values(byRow).map(s => s.frames.length * s.frames[0].w))));
+let sx = 0,
+  sy = stripY;
+for (const c of chars)
+  for (const [a, byRow] of Object.entries(c.anims))
+    for (const [row, { frames, foot }] of Object.entries(byRow)) {
+      const w = frames.length * frames[0].w;
+      if (sx + w > sheetW) {
+        sx = 0;
+        sy += stripH;
+      }
+      strips.push({ c, a, row: +row, frames, foot, x: sx, y: sy });
+      sx += w;
+    }
+const koY = strips.length ? sy + stripH : stripY,
   iconY = koY + Math.max(SW, SH),
-  sheet = blank(per * blockW, iconY + 16),
+  sheet = blank(sheetW, iconY + 16),
   paste = (im, X, Y) => {
     for (let y = 0; y < im.h; y++)
       for (let x = 0; x < im.w; x++) {
@@ -172,6 +239,14 @@ chars.forEach((c, i) => {
     dx = Math.floor((SW - c.rows[0][0].w) / 2);
   c.rows.forEach((r, row) => r.forEach((im, col) => paste(im, bx + col * SW + dx, by + row * SH + lift[i])));
   meta.cast[c.name] = { at: [bx, by], stand: c.stand, walk: c.walk, from: c.src };
+  for (const s of strips.filter(s => s.c === c)) {
+    const fw = s.frames[0].w,
+      fh = s.frames[0].h;
+    s.frames.forEach((im, k) => paste(im, s.x + k * fw, s.y));
+    const an = ((meta.cast[c.name].anims = meta.cast[c.name].anims || {})[s.a] = meta.cast[c.name].anims[s.a] || { n: 0, rows: {} });
+    an.n = Math.max(an.n, s.frames.length);
+    an.rows[s.row] = [s.x, s.y, fw, fh, s.foot];
+  }
   const ko = turn(c.rows[2][c.stand]),
     kx = i * Math.max(SW, SH);
   paste(ko, kx, koY);

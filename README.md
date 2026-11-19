@@ -200,8 +200,14 @@ PixelLab account and its API token, in `PIXELLAB_API_KEY` or a file `.pixellab-t
 ```sh
 node tools/pixellab.mjs balance                      # what the account has left
 node tools/pixellab.mjs make hero guard              # a character in 8 directions with an 8-way walk, from art/pixellab/cast.json
+node tools/pixellab.mjs animate hero guard           # its battle animations: idle, attack, cast and hurt
 node tools/bake-sprites.mjs                          # bake the pack (--code: the drawn cast only; --ppu n: the scale)
 ```
+
+Battle animations are drawn only for the facings a battle shows (north and north-west: the camera sits behind the party),
+from cast.json's `battle` prompts, each character's own where it has them. In a fight the party breathe while they wait,
+swing as a blow lands, raise their hands or staff while gathering power (and when using an item), and flinch when hit; any
+facing without an animation falls back to the standing frame.
 
 The prompts follow one art direction: Xenogears-era field sprites (soft painted shading, no black outlines) in fantasy class
 costumes. The baker makes sure of the outlines: a near-black line pixel takes a deep shade of the colour beside it.

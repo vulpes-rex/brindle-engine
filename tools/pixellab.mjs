@@ -1,11 +1,13 @@
 // node tools/pixellab.mjs balance
 // node tools/pixellab.mjs make <name>... [--dry]     generate characters from art/pixellab/cast.json, with an 8-way walk
 //                                                    (carries on with one made before from the same prompt; --fresh: anew)
+// node tools/pixellab.mjs animate <name>... [--dry]  add the battle animations in cast.json's "battle" to made characters
 // node tools/pixellab.mjs fetch <name>...            download a generated character again (from its meta.json)
 //
 // Generates the cast with PixelLab (https://api.pixellab.ai/v2) into art/pixellab/<name>/: rotations/<direction>.png, the walk
-// in walk/<direction>/<n>.png, and meta.json (the character's id, the prompt, the settings, what it cost). The art is kept in
-// the repository, so building the game never needs PixelLab; tools/bake-sprites.mjs then bakes it into the sprite pack.
+// in walk/<direction>/<n>.png, other animations in anims/<animation>/<direction>/<n>.png, and meta.json (the character's id,
+// the prompt, the settings). The art is kept in the repository, so building the game never needs PixelLab;
+// tools/bake-sprites.mjs then bakes it into the sprite pack.
 //
 // The API token comes from PIXELLAB_API_KEY, or from a file .pixellab-token at the top of the repository (git ignores it).
 import fs from 'node:fs';
@@ -85,7 +87,13 @@ async function download(url, file) {
   fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
 }
 
-// everything the character has now: its eight rotations and its walk
+// the name of a battle animation from the name it was stored under ("battle-attack" -> "attack"), or null
+const battleName = a => {
+  const m = /^battle-(\w+)$/.exec(a.display_name || '');
+  return m ? m[1] : null;
+};
+
+// everything the character has now: its eight rotations, its walk, its battle animations
 async function fetchCharacter(name, id) {
   const dir = path.join(root, 'art/pixellab', name),
     c = await api('GET', '/characters/' + id);
@@ -97,7 +105,35 @@ async function fetchCharacter(name, id) {
     fs.rmSync(path.join(dir, 'walk'), { recursive: true, force: true });
     for (const d of walk.directions) for (let i = 0; i < d.frames.length; i++) await download(d.frames[i], path.join(dir, 'walk', d.direction, i + '.png'));
   }
-  console.log('  ' + name + ': 8 rotations' + (walk ? ', walk ' + walk.directions.map(d => d.frames.length).join('/') + ' frames' : ', no walk yet'));
+  const more = (c.animations || []).filter(battleName);
+  if (more.length) fs.rmSync(path.join(dir, 'anims'), { recursive: true, force: true });
+  for (const a of more) for (const d of a.directions) for (let i = 0; i < d.frames.length; i++) await download(d.frames[i], path.join(dir, 'anims', battleName(a), d.direction, i + '.png'));
+  console.log('  ' + name + ': 8 rotations' + (walk ? ', walk ' + walk.directions.map(d => d.frames.length).join('/') + ' frames' : ', no walk yet') + more.map(a => ', ' + battleName(a) + ' ' + a.directions.map(d => d.direction + ' ' + d.frames.length).join('/')).join(''));
+}
+
+// the battle animations, for the facings a battle shows; ones the character already has are kept
+async function animate(name) {
+  const metaFile = path.join(root, 'art/pixellab', name, 'meta.json');
+  if (!fs.existsSync(metaFile)) throw new Error(name + ': make the character first (node tools/pixellab.mjs make ' + name + ')');
+  const id = JSON.parse(fs.readFileSync(metaFile, 'utf8')).character_id,
+    b = cast.battle,
+    own = (cast.cast[name] && cast.cast[name].battle) || {},
+    c = await api('GET', '/characters/' + id),
+    have = new Set((c.animations || []).map(battleName).filter(Boolean)),
+    jobs = [];
+  for (const anim of Object.keys(b).filter(k => b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]))) {
+    if (have.has(anim)) continue;
+    const spec = b[anim],
+      body = { character_id: id, mode: 'pixminimax', animation_name: 'battle-' + anim, directions: b.directions };
+    if (spec.template_action) body.template_action = spec.template_action;
+    else Object.assign(body, { action_description: own[anim] || spec.action, frame_count: b.frames });
+    console.log(name + ': ' + anim + (body.action_description ? ' (' + body.action_description + ')' : ''));
+    const r = await api('POST', '/characters/animations', body);
+    jobs.push(...(r.background_job_ids || []).map(j => [j, name + ' (' + anim + ')']));
+  }
+  for (const [j, what] of jobs) await job(j, what);
+  if (jobs.length) console.log();
+  await fetchCharacter(name, id);
 }
 
 async function make(name) {
@@ -150,14 +186,15 @@ async function main() {
   if (cmd === 'balance') {
     const b = await api('GET', '/balance');
     console.log(JSON.stringify(b, null, 2));
-  } else if (cmd === 'make' || cmd === 'fetch') {
+  } else if (cmd === 'make' || cmd === 'fetch' || cmd === 'animate') {
     if (!names.length) throw new Error('Name some of the cast: ' + Object.keys(cast.cast).join(', '));
     for (const n of names) {
       if (cmd === 'make') await make(n);
+      else if (cmd === 'animate') await animate(n);
       else await fetchCharacter(n, JSON.parse(fs.readFileSync(path.join(root, 'art/pixellab', n, 'meta.json'), 'utf8')).character_id);
     }
   } else {
-    console.log('node tools/pixellab.mjs balance | make <name>... [--dry] | fetch <name>...');
+    console.log('node tools/pixellab.mjs balance | make <name>... [--dry] | animate <name>... [--dry] | fetch <name>...');
     return;
   }
   if (spent.usd || spent.generations) console.log('Spent: ' + (spent.usd ? '$' + spent.usd.toFixed(2) : '') + (spent.generations ? ' ' + spent.generations + ' generations' : ''));

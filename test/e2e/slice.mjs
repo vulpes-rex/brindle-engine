@@ -115,6 +115,8 @@ const walkKey = key => pg.evaluate(key => { const g = window.__game, h = g.field
   const ax = g.look.axes(g.cam.yaw); return (h.x - a[0]) * ax.right[0] + (h.z - a[1]) * ax.right[1]; }, key);
 const wl = await walkKey('ArrowLeft'), wr = await walkKey('ArrowRight');
 ok(wl < 0.2 && wr > -0.2 && (wl < -1 || wr > 1), 'the arrow keys walk toward the left and right of the picture (' + wl.toFixed(1) + ', ' + wr.toFixed(1) + ' units)');
+// (where the leader lands on the picture is read from the camera of the last frame drawn: let a frame or two be drawn first)
+await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 const hp = await pg.evaluate(() => { const g = window.__game, h = g.field.hero; return g.look.project(h.x, h.y, h.z); });
 ok(Math.abs(hp[0]) < 0.25 && hp[1] > -0.6 && hp[1] < 0.2, 'the camera follows the leader (' + hp.map(v => v.toFixed(2)).join(', ') + ')');
 ok(await pg.evaluate(() => document.getElementById('px').disabled), 'the Pixel switch is off here: this look is always pixel art');
