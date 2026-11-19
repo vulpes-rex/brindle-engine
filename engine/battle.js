@@ -131,6 +131,7 @@ export function createBattle(g) {
         fx.clear();
         ui.el.ov.innerHTML = '';
         $('bp').classList.add('off');
+        $('bparty').innerHTML = '';
         ui.el.hint.style.display = '';
         ui.el.opts.style.display = '';
         g.cam.focus = back.focus;
@@ -145,37 +146,65 @@ export function createBattle(g) {
     );
   }
 
-  // ---- the panel
+  // ---- the panel, in Golden Sun's blue windows: a status window for each hero over the picture, and below it the
+  // message and command windows
   function renderParty() {
     let h = '';
+    const gauge = (v, m, cls) => '<span class="gg' + cls + '"><i style="width:' + Math.round((100 * v) / m) + '%"></i></span>';
     for (const u of B.units)
       if (u.side === 'hero') {
-        const act = u === B.cur && B.phase === 'command';
-        h += '<div class="pr' + (act ? ' act' : '') + (u.hp <= 0 ? ' ko' : '') + '"><span class="pn">' + (act ? '▶' : '') + u.name + (u.guard ? ' ◆' : '') + '</span><span class="bar"><i style="width:' + Math.round((100 * u.hp) / u.mhp) + '%"></i><span>' + u.hp + '/' + u.mhp + '</span></span><span class="mp">' + u.mp + ' MP</span></div>';
+        const act = u === B.cur && B.phase === 'command',
+          low = u.hp <= 0 ? ' ko' : u.hp < u.mhp * 0.25 ? ' low' : '';
+        h += '<div class="gs st' + (act ? ' act' : '') + low + '"><b>' + u.name + (u.guard ? ' ◆' : '') + '</b><span class="sv"><i>HP</i>' + u.hp + '</span>' + gauge(u.hp, u.mhp, '') + '<span class="sv"><i>MP</i>' + u.mp + '</span>' + gauge(u.mp, u.mmp, ' mp') + '</div>';
       }
     $('bparty').innerHTML = h;
   }
+
+  // the command icons, as pixel art: one character a pixel, '.' clear
+  const INK = { k: '#1a1430', w: '#fff', s: '#c8d4e8', y: '#ffd860', b: '#8a5a3a', p: '#c49cff', c: '#8ff0ff', g: '#6ee08a', G: '#2f9a58', B: '#6aa8ff', N: '#2c4ab0' },
+    ICON = {
+      attack: ['..........kk', '.........kwk', '........kwsk', '.......kwsk.', '......kwsk..', '..kk.kwsk...', '..kykwsk....', '...kysk.....', '..kbkyyk....', '.kbk.kyk....', 'kbk...kk....', 'kk..........'],
+      skill: ['.....k.....', '....kck....', '....kck....', '...kpwpk...', '.kkpwwwpkk.', 'kcwwwwwwwck', '.kkpwwwpkk.', '...kpwpk...', '....kck....', '....kck....', '.....k.....'],
+      item: ['...kkkkk...', '...kbbbk...', '....ksk....', '....ksk....', '...kswsk...', '..kgwgggk..', '.kgggggggk.', '.kgGgggggk.', '.kgGGgggGk.', '..kGGGGGk..', '...kkkkk...'],
+      guard: ['kkkkkkkkkkk', 'kBBBBwBBBNk', 'kBBBBwBBBNk', 'kBBBBwBBBNk', 'kwwwwywwwwk', 'kBBBBwBBBNk', '.kBBBwBBNk.', '.kBBBwBBNk.', '..kBBwBNk..', '...kBwNk...', '....kkk....']
+    },
+    svg = rows => {
+      let r = '';
+      rows.forEach((line, y) => {
+        for (let x = 0; x < line.length; ) {
+          const c = line[x];
+          let n = 1;
+          while (line[x + n] === c) n++;
+          if (c !== '.') r += '<rect x="' + x + '" y="' + y + '" width="' + n + '" height="1" fill="' + INK[c] + '"/>';
+          x += n;
+        }
+      });
+      return '<svg viewBox="0 0 ' + rows[0].length + ' ' + rows.length + '" shape-rendering="crispEdges" aria-hidden="true">' + r + '</svg>';
+    },
+    tile = (c, label, off) => '<button class="tile" data-c="' + c + '"' + (off ? ' disabled' : '') + '>' + svg(ICON[c]) + '<span>' + label + '</span></button>',
+    row = (attr, label, note, off) => '<button class="row" ' + attr + (off ? ' disabled' : '') + '><span>' + label + '</span>' + (note ? '<small>' + note + '</small>' : '') + '</button>';
 
   function menu(kind) {
     B.menu = kind;
     const u = B.cur,
       tonic = g.items.tonic || 0;
     let h = '';
-    if (kind === 'root') h = '<button data-c="attack">Attack</button><button data-c="skill">Skill</button><button data-c="item"' + (tonic ? '' : ' disabled') + '>Tonic ×' + tonic + '</button><button data-c="guard">Guard</button>';
+    if (kind === 'root') h = tile('attack', 'Attack') + tile('skill', 'Skill') + tile('item', 'Tonic ×' + tonic, !tonic) + tile('guard', 'Guard');
     else if (kind === 'skill') {
-      for (const s of u.skills) h += '<button class="wide" data-s="' + s.id + '"' + (u.mp < s.mp ? ' disabled' : '') + '>' + s.name + ' <small>' + s.mp + ' MP</small></button>';
-      h += '<button class="wide" data-c="back">Back</button>';
+      for (const s of u.skills) h += row('data-s="' + s.id + '"', s.name, s.mp + ' MP', u.mp < s.mp);
+      h += row('data-c="back"', 'Back');
     } else if (kind === 'foe') {
       B.units.forEach((f, i) => {
-        if (f.side === 'foe' && f.hp > 0) h += '<button class="wide" data-t="' + i + '">' + f.name + '</button>';
+        if (f.side === 'foe' && f.hp > 0) h += row('data-t="' + i + '"', f.name);
       });
-      h += '<button class="wide" data-c="back">Back</button>';
+      h += row('data-c="back"', 'Back');
     } else if (kind === 'ally') {
       B.units.forEach((f, i) => {
-        if (f.side === 'hero' && f.hp > 0) h += '<button data-t="' + i + '">' + f.name + ' <small>' + f.hp + '</small></button>';
+        if (f.side === 'hero' && f.hp > 0) h += row('data-t="' + i + '"', f.name, f.hp + '/' + f.mhp + ' HP');
       });
-      h += '<button data-c="back">Back</button>';
+      h += row('data-c="back"', 'Back');
     }
+    $('bcmd').className = 'gs ' + (kind === 'root' ? 'tiles' : 'list');
     $('bcmd').innerHTML = h;
   }
 
@@ -559,7 +588,8 @@ export function createBattle(g) {
       if (B.timer <= 0) {
         B.phase = 'end';
         bmsg(B.end === 'won' ? def.wonMsg : def.lostMsg);
-        $('bcmd').innerHTML = '<button class="wide" data-c="go">Continue</button>';
+        $('bcmd').className = 'gs list';
+        $('bcmd').innerHTML = row('data-c="go"', 'Continue');
       }
     }
     g.cam.shake = B.shake;
@@ -568,6 +598,10 @@ export function createBattle(g) {
   // bars, names, numbers and the turn arrow follow their owners (bars and names only while choosing, as in Golden Sun).
   // Called once the frame is drawn, so they use the camera the picture was drawn with.
   function overlay() {
+    // (a foe's name and bar stay clear of the status windows above the picture)
+    const st = $('bparty'),
+      under = st.offsetHeight ? st.offsetTop + st.offsetHeight + 30 : 0,
+      from = st.offsetLeft - 40;
     for (const q of pops) place(q);
     for (const f of B.units)
       if (f.side === 'foe') {
@@ -575,6 +609,7 @@ export function createBattle(g) {
         f.el.style.display = f.nm.style.display = on ? 'block' : 'none';
         if (on) {
           const p = ui.toStage(g.look.project(f.x, GY + f.top, f.z));
+          if (p[0] > from && p[1] < under) p[1] = under;
           f.el.style.left = f.nm.style.left = p[0] + 'px';
           f.el.style.top = f.nm.style.top = p[1] + 'px';
           f.el.firstChild.style.width = Math.round((100 * f.hp) / f.mhp) + '%';

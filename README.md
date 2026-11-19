@@ -137,7 +137,8 @@ glyph underfoot, a column of light, rising sparks) until its first hit, and the 
 is one of the engine's effects, tinted by `color`: `slash`, `burst`, `bolts` (lightning and crystals of light), `heal`
 (a column, falling sparkles, rising rings), `ward`, `shard` (a bolt from the user), or `quake` and `hum`, which play once
 for all the targets. `screen` flashes the whole picture and `flash` tints the one hit. Blows with no effect of their own
-get a small spray of sparks; a beaten foe flickers, flares and comes apart.
+get a small spray of sparks; a beaten foe flickers, flares and comes apart. The panel uses Golden Sun's blue windows too:
+a status window for each hero over the top of the picture, a message window, and commands as pixel-art icons.
 
 The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill, effect, scene or pack file).
 

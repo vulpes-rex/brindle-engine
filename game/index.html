@@ -51,23 +51,38 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 /* numbers spring up, land with a little bounce, sit, and go (as in Golden Sun) */
 @keyframes pop{0%{margin-top:6px;opacity:0;scale:.6}8%{margin-top:-22px;opacity:1;scale:1.15}20%{margin-top:0;scale:1}28%{margin-top:-7px}36%{margin-top:0}80%{opacity:1}100%{margin-top:-4px;opacity:0}}
 .cur{position:absolute;transform:translate(-50%,-100%);color:var(--glow);font-size:14px;text-shadow:0 1px 0 #000,1px 0 0 #000,-1px 0 0 #000;animation:bob .7s steps(2) infinite}
-#bp{display:flex;flex-direction:column;gap:6px}
+/* battle windows, after Golden Sun: blue, bright-edged, rounded */
+.gs{background:linear-gradient(180deg,#3452d4 0%,#1d2f96 40%,#101c66 100%);border:2px solid #e2e8ff;border-radius:5px;box-shadow:0 0 0 2px #0a0f2c,inset 0 0 0 1px rgba(150,176,255,.55);color:#fff;text-shadow:1px 1px 0 #0a0f30}
+#bp{display:flex;flex-direction:column;gap:8px}
 #bp.off{display:none}
-#bmsg{min-height:1.4em;font-size:14px;line-height:1.3;color:var(--glow)}
-#brow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:8px;align-items:start}
-#bparty{display:flex;flex-direction:column;gap:5px;border:2px solid var(--line);padding:6px;background:var(--panel)}
-.pr{display:grid;grid-template-columns:3.6em minmax(0,1fr) 2.6em;gap:5px;align-items:center;font-size:13px}
-.pr.act .pn{color:var(--glow)}
-.pr.ko{opacity:.45}
-.bar{position:relative;height:15px;background:#0a1016;border:1px solid var(--line)}
-.bar i{position:absolute;left:0;top:0;bottom:0;background:#4f9a3c}
-.bar span{position:absolute;inset:0;font-size:11px;line-height:13px;text-align:center;color:#fff;text-shadow:0 1px 0 #000}
-.mp{font-size:11px;color:#8fc4ff;text-align:right}
-#bcmd{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start}
-#bcmd button{min-height:40px;font-size:13px;padding:3px}
-#bcmd button.wide{grid-column:1/3}
-#bcmd button:disabled{opacity:.4}
-#bcmd small{color:#8fc4ff;font-size:11px}
+#bmsg{min-height:3.1em;padding:7px 10px;font-size:15px;line-height:1.35}
+#bparty{position:absolute;top:6px;right:6px;display:flex;gap:4px;pointer-events:none}
+#bparty:empty{display:none}
+.st{width:clamp(84px,22vw,132px);padding:3px 6px 5px;background:linear-gradient(180deg,rgba(52,82,212,.92) 0%,rgba(29,47,150,.92) 45%,rgba(16,28,102,.92) 100%);font-size:12px;line-height:1.15}
+.st b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st.act{border-color:var(--glow);box-shadow:0 0 0 2px #0a0f2c,0 0 8px 1px rgba(255,232,150,.7),inset 0 0 0 1px rgba(255,232,150,.5)}
+.st.low .sv:first-of-type{color:var(--glow)}
+.st.ko{filter:saturate(.4)}
+.st.ko b,.st.ko .sv{color:#ff9a9a}
+.sv{display:flex;justify-content:space-between;margin-top:1px}
+.sv i{font-style:normal;color:#a8c4ff}
+.gg{display:block;height:3px;margin-top:1px;background:#0a0f2c}
+.gg i{display:block;height:100%;background:#6ee08a}
+.gg.mp i{background:#7ab4ff}
+#bcmd{min-height:78px}
+#bcmd:empty{visibility:hidden}
+#bcmd.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:5px}
+#bcmd.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));padding:4px 6px}
+#bcmd button{font:inherit;color:#fff;text-shadow:inherit;background:transparent;border:2px solid transparent;border-radius:4px;min-height:0;cursor:pointer}
+#bcmd button:hover,#bcmd button:focus-visible{border-color:var(--glow);background:rgba(255,255,255,.08);outline:none}
+#bcmd button:active{background:rgba(255,232,150,.18)}
+#bcmd button:disabled{opacity:.4;border-color:transparent;background:transparent}
+.tile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px 5px;font-size:13px}
+.tile svg{width:36px;height:36px;filter:drop-shadow(1px 1px 0 #0a0f30)}
+.row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px 7px 24px;min-height:40px;font-size:15px;text-align:left}
+.row::before{content:'\25B6';position:absolute;left:7px;font-size:11px;color:var(--glow);opacity:0}
+.row:hover::before,.row:focus-visible::before{opacity:1}
+.row small{color:#a8c4ff;font-size:12px}
 @media (prefers-reduced-motion:reduce){#more{animation:none}.cur{animation:none}}
 </style>
 </head>
@@ -76,6 +91,7 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 <header><h1 id="ttl">Brindlebrook</h1><span id="sub"></span></header>
 <div id="stage"><canvas id="cv"></canvas>
 <div id="ov"></div>
+<div id="bparty"></div>
 <div id="dlg" class="off" role="dialog" aria-live="polite"><div id="who"></div><p id="say"></p><div id="more">&#9660;</div></div>
 <div id="fade"></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -83,7 +99,7 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 <div id="load" role="status">Preparing&hellip;</div></div>
 <p id="hint"></p>
 <div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="sv">Save</button></div>
-<div id="bp" class="off"><div id="bmsg" role="status" aria-live="polite"></div><div id="brow"><div id="bparty"></div><div id="bcmd"></div></div></div>
+<div id="bp" class="off"><div id="bmsg" class="gs" role="status" aria-live="polite"></div><div id="bcmd" class="gs"></div></div>
 <p id="cred">Lighthouse rock and the monsters were sculpted with Ink Studio by Silicon Jungle (MIT licence), then baked to data that this page draws itself.</p>
 </main>
 <script>
