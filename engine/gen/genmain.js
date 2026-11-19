@@ -1,5 +1,6 @@
 // The scene generator: signed-distance scenes -> splats, lights and a walk map. One self-contained function, because it is
-// handed to a Web Worker as text. Scenes are picked by index (9 Brindlebrook, 10 Underhall). Splitting scenes out is future work.
+// handed to a Web Worker as text. Built-in scenes are picked by index (9 Brindlebrook, 10 Underhall). A game can also bring
+// its own: SI is then { src, data }, where src is the text of a self-contained function (tools, data) => scene (see README).
 export function genMain(SI,progress){
 const RS=2,NU=160,HU=60,N=NU*RS,H=HU*RS,C=80,G0=16,NN=N*N;
 const GS=(typeof self!=='undefined')?self:globalThis;
@@ -826,7 +827,10 @@ case 93:{const q=n3(x*0.5,y*0.2,z*0.5);return(y*0.8-Math.floor(y*0.8)<0.15)?[56,
 case 41:{const p=n2(x*0.11+50,z*0.11);return p<0.5?[26,62,50]:[34,74,50];}
 }
 const c=baseOld(m,x,y,z);if(edge){const e=(m===54||m===55)?1.25:1.14;c[0]=Math.min(255,c[0]*e);c[1]=Math.min(255,c[1]*e);c[2]=Math.min(255,c[2]*e);}return c;}
-S=SCENES[SI];LD=S.LD;S.lights=[];S.emit=null;S.birds=S.beam=S.waves=S.beamShaft=null;G={};
+// A scene the game brings itself arrives as { src, data }: src is the text of a function (tools, data) => scene.
+if(SI&&typeof SI==='object'){const TOOLS={C,G0,NU,HU,RS,HT,DRm,h3,n2,n3,sm,hAt,mi,prim,sdBox,ball,cap,ell,cyl,box,abox,steps,ring,crag,pillar,torch,carve,barrel,column,lamp,get G(){return G;}};S=(0,eval)('('+SI.src+')')(TOOLS,SI.data);}
+else S=SCENES[SI];
+if(!S)throw new Error('no such scene');LD=S.LD;S.lights=[];S.emit=null;S.birds=S.beam=S.waves=S.beamShaft=null;G={};
 progress('Shaping the ground');
 if(S.init)S.init();
 for(let z=0;z<N;z++)for(let x=0;x<N;x++){const i=z*N+x,X=(x+0.5)/RS,Z=(z+0.5)/RS;DRm[i]=S.foot(X,Z);HT[i]=S.h(X,Z);YB[i]=S.bot(X,Z);}

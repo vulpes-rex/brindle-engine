@@ -357,6 +357,16 @@ export function createField(g) {
       hero.moving = false;
       mark = null;
     },
+    // the walk map changed under the party (a gate shut, a wall moved): work out again where it can go
+    reflood() {
+      hero.path = null;
+      reach = nav.flood(hero.x, hero.z);
+    },
+    // put the party somewhere else in the same area, at once
+    place(x, z) {
+      Object.assign(hero, { x, z, y: nav.gh(x, z), path: null, moving: false });
+      reach = nav.flood(x, z);
+    },
     setMark(x, z) {
       mark = [x, z, g.t + 99];
     },

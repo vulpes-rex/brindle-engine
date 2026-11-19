@@ -58,6 +58,9 @@ export function runScript(script, host, done) {
       } else if (st.go) {
         host.go(st.go, st.at, next);
         return;
+      } else if (st.do) {
+        host.do(st, next);
+        return;
       } else if (st.stop) stack.length = 0;
       else throw new Error('Unknown script step: ' + JSON.stringify(st));
     }
@@ -100,6 +103,8 @@ export function checkScript(script, where, known) {
         const sp = known.spawns && known.spawns[st.go];
         if (!sp) out.push(here + ': unknown area "' + st.go + '"');
         else if (!sp.includes(st.at)) out.push(here + ': area "' + st.go + '" has no spawn "' + st.at + '"');
+      } else if (st.do) {
+        if (known.actions && !known.actions.includes(st.do)) out.push(here + ': unknown action "' + st.do + '"');
       } else out.push(here + ': unknown step ' + JSON.stringify(st));
     });
   };

@@ -10,7 +10,7 @@ test('a save round-trips and keeps only what is set', () => {
   assert.deepEqual(s.flags, ['asked', 'key']);
   assert.equal(s.x, 1.23);
   const back = parseSave(JSON.stringify(s), ['town']);
-  assert.deepEqual(back, { area: 'town', x: 1.23, z: -52, yaw: 0.785, flags: { asked: true, key: true }, items: { tonic: 5 } });
+  assert.deepEqual(back, { area: 'town', x: 1.23, z: -52, yaw: 0.785, flags: { asked: true, key: true }, items: { tonic: 5 }, data: {} });
 });
 
 test('saves that cannot be trusted are refused', () => {
@@ -37,4 +37,10 @@ test('the store saves, loads and clears; storage that throws or is missing is su
   assert.equal(broken.save(state), false);
   broken.clear();
   assert.equal(new SaveStore(null, 'k').save(state), false);
+});
+
+test('a game\'s own state is saved with the rest', () => {
+  const s = makeSave(Object.assign({}, state, { data: { party: [{ id: 'a', poise: 7 }], ember: 2 } }));
+  assert.deepEqual(parseSave(JSON.stringify(s), ['town']).data, { party: [{ id: 'a', poise: 7 }], ember: 2 });
+  assert.deepEqual(parseSave(JSON.stringify(Object.assign({}, s, { data: [1, 2] })), ['town']).data, {});
 });

@@ -14,7 +14,8 @@ export function makeSave(state) {
     flags: Object.keys(state.flags)
       .filter(k => state.flags[k])
       .sort(),
-    items: Object.assign({}, state.items)
+    items: Object.assign({}, state.items),
+    data: state.data && typeof state.data === 'object' ? state.data : {}
   };
 }
 
@@ -35,7 +36,8 @@ export function parseSave(text, areas) {
   for (const k of Object.keys(s.items)) if (Number.isFinite(s.items[k]) && s.items[k] > 0) items[k] = Math.floor(s.items[k]);
   const flags = {};
   for (const f of s.flags) flags[f] = true;
-  return { area: s.area, x: s.x, z: s.z, yaw: s.yaw, flags, items };
+  const data = s.data && typeof s.data === 'object' && !Array.isArray(s.data) ? s.data : {};
+  return { area: s.area, x: s.x, z: s.z, yaw: s.yaw, flags, items, data };
 }
 
 export class SaveStore {

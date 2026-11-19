@@ -102,6 +102,14 @@ export class GenLook {
     }
   }
 
+  // what to hand the generator for a scene: its index, or the text and data of a scene the game brought
+  job(scene) {
+    if (typeof scene !== 'string') return scene;
+    const s = (this.scenes || {})[scene];
+    if (!s) throw new Error('there is no scene called "' + scene + '"');
+    return { src: s.build.toString(), data: s.data === undefined ? null : s.data };
+  }
+
   vao(B, first) {
     const gl = this.gl,
       v = gl.createVertexArray();
@@ -128,10 +136,10 @@ export class GenLook {
     return v;
   }
 
-  // Load an area: { scene: index }. Returns what the engine needs: a handle to draw, the walk map and named places.
+  // Load an area: { scene: index } for a built-in scene, or { scene: "name" } for one the game brought (this.scenes). Returns what the engine needs: a handle to draw, the walk map and named places.
   async load(def, onProgress) {
     const gl = this.gl,
-      r = await this.generate(def.scene, onProgress),
+      r = await this.generate(this.job(def.scene), onProgress),
       B = [buffer(gl, r.F), buffer(gl, r.NB), buffer(gl, r.CB)],
       tiles = [];
     for (let k = 0; k <= r.T * r.T; k++) {
@@ -409,7 +417,7 @@ export class GenLook {
       const q = s.rect;
       gl.uniform3f(P4.u('uPos'), s.x, s.y, s.z);
       gl.uniform4f(P4.u('uRect'), q[0], q[1], q[2], q[3]);
-      gl.uniform2f(P4.u('uSize'), q[2] * S, q[3] * S);
+      gl.uniform2f(P4.u('uSize'), q[2] * S * (s.scale || 1), q[3] * S * (s.scale || 1));
       gl.uniform2f(P4.u('uOff'), 0, s.offY * S);
       gl.uniform1f(P4.u('uFlip'), s.flip);
       gl.uniform3f(P4.u('uTint'), sil ? 1 : s.tint[0], sil ? 1 : s.tint[1], sil ? 1 : s.tint[2]);

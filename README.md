@@ -126,6 +126,23 @@ Battles are data too. A skill or foe action is a move plus timed hits:
 
 The build refuses data that points at something missing (an unknown item, spawn, sprite, battle, skill or pack file).
 
+## A game with rules of its own
+
+Brindlebrook uses the engine's own battles and nothing else. A game that brings its own rules (see
+[Ember & Abyss](https://github.com/vulpes-rex/ember-and-abyss), a tabletop ruleset played on this engine) hands `start()`
+a few more things. All are optional.
+
+| in `content` | what it is |
+| --- | --- |
+| `createBattle(g)` | a battle mode of the game's own, in place of the built-in one: `{ B, start(id, cb), update(dt), build(frame), tap(nx, ny) }` |
+| `scenes` | generated scenes by name, `{ name: { build(tools, data), data } }`, for areas with `"scene": "name"`. `build` is handed to the scene generator as text, so it must use only its two arguments |
+| `actions` | script steps: `{ name(g, step, next) }` runs for `{ "do": "name", ... }` and calls `next()` when it is done |
+| `hooks` | `start(g)`, `began(g, fresh)`, `enter(g, area)`, `update(g, dt)` and `build(g, frame)` while walking, `canSave(g)` |
+| `game.start.data` | the game's own state. It lives in `g.data`, is saved with everything else, and must be plain JSON |
+
+Also for such games: `g.field.place(x, z)` and `g.field.reflood()` (when the walk map changes under the party), and
+`scale` on a sprite in a frame.
+
 ## Baking
 
 Baking needs a checkout of Ink Studio; it is not a dependency of the engine or the build.
@@ -145,8 +162,8 @@ no ground, holds an obstacle, or steps too far to its neighbour.
 
 - No menus, inventory screen, choices in dialogue, shops or sound.
 - Battles are only drawn by the gen look; monsters are not drawn in ink areas.
-- Generated scenes still live inside the generator (`engine/gen/genmain.js`, picked by index). Moving their definitions
-  into `game/` is the next clean-up.
+- Brindlebrook's own generated scenes still live inside the generator (`engine/gen/genmain.js`, picked by index). A game
+  can bring scenes of its own (see above); moving the built-in ones out to `game/` is the next clean-up.
 - The ink look redraws every dab whenever the camera moves; it has no culling yet.
 - One save slot.
 

@@ -2,6 +2,12 @@
 // whichever look each one asks for, switches between walking and fighting, runs scripts, saves, and drives the frame loop.
 //
 // content: { game, areas, heroes, skills, monsters, foeActions, battles, makeSprites }  (see game/ for a worked example)
+// A game with rules of its own can also bring:
+//   createBattle(g)  its own battle mode, in place of the built-in one: { B, start(id, cb), update(dt), build(fr), tap(nx, ny) }
+//   scenes           generated scenes by name: { name: { build(tools, data), data } }, used by areas with "scene": "name"
+//   actions          script steps: { name(g, step, next) } runs for { "do": "name", ... }
+//   hooks            { start(g), began(g, fresh), enter(g, area), update(g, dt), build(g, frame), canSave(g) }
+//   game.start.data  the game's own saved state, kept in g.data
 import { createUI } from './ui.js';
 import { texture } from './gl.js';
 import { GenLook } from './look-gen.js';
@@ -32,6 +38,7 @@ export function start(content) {
     SP,
     flags: {},
     items: {},
+    data: {}, // the game's own state; saved as it is, so keep it plain JSON
     t: 0,
     mode: 'boot', // 'field' | 'battle'
     busy: false, // a script is running
@@ -43,7 +50,8 @@ export function start(content) {
     anim: new Float32Array(9),
     leader: SP.names.indexOf(content.game.leader)
   };
-  const looks = {},
+  const hooks = content.hooks || {},
+    looks = {},
     areas = {},
     animNow = {};
   let depth = 0,
@@ -57,6 +65,7 @@ export function start(content) {
     if (!looks[kind]) {
       try {
         looks[kind] = kind === 'ink' ? new InkLook(gl, cv, stage, atlas) : new GenLook(gl, cv, stage, atlas);
+        if (kind !== 'ink') looks[kind].scenes = content.scenes || {};
       } catch (e) {
         throw new Error('the graphics shaders failed to start on this device (' + e.message + ')');
       }
@@ -80,6 +89,7 @@ export function start(content) {
   };
 
   g.loadMonsters = () => {
+    if (!content.game.monsterPack) return Promise.resolve();
     if (!monsters) {
       monsters = (async () => {
         const r = await fetch(content.game.monsterPack);
@@ -127,9 +137,9 @@ export function start(content) {
   })();
   const store = new SaveStore(storage, content.game.saveKey, Object.keys(content.areas));
   function save(announce) {
-    if (g.mode !== 'field' || !g.area || g.busy) return false;
+    if (g.mode !== 'field' || !g.area || g.busy || (hooks.canSave && !hooks.canSave(g))) return false;
     const h = g.field.hero,
-      ok = store.save({ area: g.area.id, x: h.x, z: h.z, yaw: g.cam.yawT, flags: g.flags, items: g.items });
+      ok = store.save({ area: g.area.id, x: h.x, z: h.z, yaw: g.cam.yawT, flags: g.flags, items: g.items, data: g.data });
     unsaved = false;
     sinceSave = 0;
     if (announce) ui.toast(ok ? 'Saved' : 'This browser would not keep a save');
@@ -153,8 +163,14 @@ export function start(content) {
     },
     say: (lines, cb) => ui.say(lines, cb),
     battle: (id, cb) => g.battle.start(id, cb),
-    go: (id, at, cb) => travel(id, at, cb)
+    go: (id, at, cb) => travel(id, at, cb),
+    do(st, cb) {
+      const fn = (content.actions || {})[st.do];
+      if (!fn) throw new Error('Unknown action: ' + st.do);
+      fn(g, st, cb);
+    }
   };
+  g.markUnsaved = () => (unsaved = true);
 
   // run a script; scripts can nest (a battle's closing script runs inside the one that started the battle)
   g.run = (script, done) => {
@@ -183,6 +199,7 @@ export function start(content) {
     for (const a of rt.def.anims || []) if (a.flag) animNow[a.group] = g.flags[a.flag] ? a.to : 0;
     ui.subtitle(rt.def.name);
     refreshHint();
+    if (hooks.enter) hooks.enter(g, rt);
   }
 
   async function travel(id, at, cb) {
@@ -222,6 +239,7 @@ export function start(content) {
     if (g.mode === 'battle') g.battle.update(dt);
     else {
       g.field.update(dt);
+      if (hooks.update) hooks.update(g, dt);
       sinceSave += dt;
       if (sinceSave > 12 && !g.busy) save(false);
     }
@@ -232,12 +250,17 @@ export function start(content) {
       c = g.cam,
       fr = { t: g.t, cam: { focus: c.focus, yaw: c.yaw, still: c.yaw === c.yawT, shake: bt ? c.shake : 0 }, anim: bt ? ZERO : g.anim, models: [], blobs: [], rings: [], sprites: [] };
     if (bt) g.battle.build(fr);
-    else g.field.build(fr);
+    else {
+      g.field.build(fr);
+      if (hooks.build) hooks.build(g, fr);
+    }
     g.look.draw(fr);
   }
 
   g.field = createField(g);
-  g.battle = createBattle(g);
+  g.battle = (content.createBattle || createBattle)(g);
+  g.refreshHint = refreshHint;
+  if (hooks.start) hooks.start(g);
 
   // ---- input
   const tap = (nx, ny) => {
@@ -315,11 +338,13 @@ export function start(content) {
   async function begin(s) {
     g.flags = s ? s.flags : {};
     g.items = s ? s.items : Object.assign({}, content.game.start.items);
+    g.data = s ? s.data : JSON.parse(JSON.stringify(content.game.start.data || {}));
     const id = s ? s.area : content.game.start.area;
     ui.loading('Preparing…');
     const rt = await g.loadArea(id, m => ui.loading(m + '…'));
     enterArea(rt, s ? { x: s.x, z: s.z } : g.field.spawn(rt, content.game.start.spawn), s ? s.yaw : undefined);
     ui.loading(null);
+    if (hooks.began) hooks.began(g, !s);
     live = true;
     window.__ready = 1;
     // (the rest is fetched or built quietly, so doors open at once)

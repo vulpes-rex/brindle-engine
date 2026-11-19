@@ -15,7 +15,8 @@ function host(flags = {}, items = {}) {
     give: (i, n) => ((items[i] = (items[i] || 0) + n), log.push('give ' + i + ' ' + n)),
     say: (lines, cb) => (log.push('say ' + lines.map(l => l[1]).join('|')), setTimeout(cb, 0)),
     battle: (id, cb) => (log.push('battle ' + id), setTimeout(cb, 0)),
-    go: (area, at, cb) => (log.push('go ' + area + ' ' + at), setTimeout(cb, 0))
+    go: (area, at, cb) => (log.push('go ' + area + ' ' + at), setTimeout(cb, 0)),
+    do: (st, cb) => (log.push('do ' + st.do + ' ' + (st.n || '')), setTimeout(cb, 0))
   };
 }
 const run = (script, h) => new Promise(res => runScript(script, h, res));
@@ -74,4 +75,12 @@ test('checkScript finds what a script refers to that does not exist', () => {
   assert.deepEqual(checkScript([['A', 'hi'], { give: 'tonic' }, { battle: 'b1' }, { go: 'isle', at: 'jetty' }, { case: [['x', []], [null, [{ set: 'y' }]]] }], 's', known), []);
   const bad = checkScript([['A'], { give: 'gold' }, { battle: 'b2' }, { go: 'isle', at: 'cave' }, { go: 'moon', at: 'x' }, { hop: 1 }, { if: { has: 'gem' }, then: [] }], 's', known);
   assert.equal(bad.length, 7);
+});
+
+test('a game\'s own steps run in order and are checked by name', async () => {
+  const h = host();
+  await new Promise(res => runScript([['', 'one'], { do: 'rest', n: 2 }, ['', 'two']], h, res));
+  assert.deepEqual(h.log, ['say one', 'do rest 2', 'say two']);
+  assert.deepEqual(checkScript([{ do: 'rest' }], 's', { actions: ['rest'] }), []);
+  assert.equal(checkScript([{ do: 'nap' }], 's', { actions: ['rest'] }).length, 1);
 });
