@@ -19,14 +19,16 @@ Everything the slice does is written as data in `game/`; `engine/` knows nothing
 npm install
 npm run build        # checks the game data, writes dist/index.html and dist/packs/
 npm run serve        # http://localhost:8080
-npm test             # unit tests: scripts, saving, walk maps, game data
+npm test             # unit tests: scripts, saving, walk maps, effects, scenes, game data
+npm run e2e          # plays the whole slice in a headless browser (with npm run serve running)
 ```
 
-`npm run e2e` plays the whole slice in a headless browser. It needs Playwright and Chrome, which are not installed by
-`npm install`; point `PLAYWRIGHT` at the module and `CHROME` at the binary if they are not found:
+`npm run e2e` drives the Chrome installed on the machine through playwright-core, a dev dependency, at phone size. If
+Chrome is somewhere unusual, point `CHROME` at it; `PLAYWRIGHT` picks another Playwright module; `SHOTS=dir` saves
+screenshots along the way:
 
 ```sh
-PLAYWRIGHT=/path/to/playwright CHROME=/usr/bin/google-chrome node test/e2e/slice.mjs http://localhost:8080/index.html
+CHROME=/usr/bin/google-chrome SHOTS=/tmp/shots node test/e2e/slice.mjs http://localhost:8080/index.html
 ```
 
 The build is a single page with its script inline, plus a `packs/` folder it fetches from. It runs from any static host.
