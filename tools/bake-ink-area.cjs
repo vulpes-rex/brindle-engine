@@ -90,8 +90,12 @@ if(SCALE){
   const put=(arr,x,z,y,r)=>{const cx=Math.floor((x+EXT)/fc+1e-6),cz=Math.floor((z+EXT)/fc+1e-6);for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){const X=cx+dx,Z=cz+dz;if(X<0||Z<0||X>=NF||Z>=NF)continue;const j=Z*NF+X;(arr[j]||(arr[j]=[])).push(y);}};
   for(let i=0;i<N;i++){if(!seen[i]||(FLG[i]&2))continue;const q=i*16,y=d[q+1];if(y<0.02)continue;put(any,d[q],d[q+2],y,0);if(NRM[i*3+1]>0.6)put(ups,d[q],d[q+2],y,1);}
   const GF=new Float32Array(NF*NF).fill(-999),OB=new Uint8Array(NF*NF);
-  for(let j=0;j<NF*NF;j++){const u=ups[j];if(!u)continue;u.sort((a,b)=>a-b);let g=u[0];for(let k=1;k<u.length;k++){if(u[k]-g<=STEP)g=u[k];else break;}
-    GF[j]=g;if(any[j])for(const y of any[j])if(y>g+LO&&y<g+HI){OB[j]=1;break;}}
+  // The numbers above suit a diorama, where a stair tread rises most of a hero's height. A scene can mark places it built to the hero's
+  // own size (W.navFine = [{ at: [x, z], r, step, low }], world units): inside one, a step is only `step` high and anything
+  // standing `low` above the ground already blocks, so a picket fence or a flower pot is not climbed like a stair.
+  const FINE=w.navFine||[],fineAt=j=>{const x=(j%NF+0.5)*fc-EXT,z=(Math.floor(j/NF)+0.5)*fc-EXT;for(const f of FINE)if(Math.hypot(x-f.at[0],z-f.at[1])<f.r)return f;return null;};
+  for(let j=0;j<NF*NF;j++){const u=ups[j];if(!u)continue;const fn=fineAt(j),ST=fn?fn.step:STEP,LW=fn?fn.low:LO;u.sort((a,b)=>a-b);let g=u[0];for(let k=1;k<u.length;k++){if(u[k]-g<=ST)g=u[k];else break;}
+    GF[j]=g;if(any[j])for(const y of any[j])if(y>g+LW&&y<g+HI){OB[j]=1;break;}}
   const B0=new Uint8Array(NUc*NUc),HC=new Float32Array(NUc*NUc).fill(-999);
   for(let z=0;z<NUc;z++)for(let x=0;x<NUc;x++){let h=-999,bad=0;for(let b=0;b<2;b++)for(let a=0;a<2;a++){const j=(z*2+b)*NF+x*2+a;if(GF[j]<-900||OB[j])bad=1;else if(GF[j]>h)h=GF[j];}
     if(bad||h<-900)B0[z*NUc+x]=1;HC[z*NUc+x]=h;}
@@ -146,6 +150,8 @@ const LW=NL*4/3,lut=Buffer.alloc(rows.length*NL*4);rows.forEach((r,i)=>r.copy(lu
 const lp=png(LW,rows.length,lut);fs.writeFileSync(path.join(OUT,'lut.png'),lp);
 let sum=0;for(let i=0;i<img.length;i++)sum=(sum+img[i]*((i%251)+1))>>>0;
 let lsum=0;for(let i=0;i<lut.length;i++)lsum=(lsum+lut[i]*((i%251)+1))>>>0;
+// (a dab's ramp shares a byte with its flags: five bits)
+if(RP.length>31)throw new Error('this scene uses '+RP.length+' ramps; a pack holds 31 at most. Give materials that share colours the same r');
 const meta={al:AL,n:M,tw:TW,th:TH,rows:rows.length,nl:NL,litMax:LITMAX,q:Q,o:O,sigMax:SIGMAX,sum,lsum,pal:w.pal,ramps:RP,cam:w.cam,radius:w.radius,detail:w.detail,lantern:w.lantern,kinds};
 // (which ramp the water lies on, and how high)
 let wy=0,wn=0,wr={};for(const i of keep)if(FLG[i]&2){wy+=d[i*16+1];wn++;wr[PX[i*8]]=(wr[PX[i*8]]||0)+1;}
