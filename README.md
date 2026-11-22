@@ -216,7 +216,27 @@ The walk map of an ink area is worked out from the dabs: ground is the lowest se
 climbed up small steps; a column is an obstacle when something stands in body height above it; a cell is blocked when it has
 no ground, holds an obstacle, or steps too far to its neighbour.
 
+### Sculpting for the game's camera
+
+The game draws 9 pixels to a game unit: 180 to a world unit of Lighthouse rock, where the diorama itself was sculpted at 34. Seen
+that close, a diorama is large flat patches. The keeper's house and yard (`scenes/ink/lighthouse.cjs`, "sculpted for the game
+camera") show the other way to build: pieces sized to the hero (0.11 world units tall there), dabs laid about 2.5 times closer
+(`res` of a third of a diorama pixel, and `px` of the same handed to `S.window`, `S.door`, `S.barrel`, `S.crate` and
+`S.canopy`), and patterns with cells of 1 to 4 diorama pixels (`tile: [2, 2]`, `stone: [3, 2]`, `width: 1`, a lawn with
+`cell: 2`). That patch added about a fifth to the area's dabs.
+
+Two things the baker needs to know about such a place:
+
+- The walk map's heights are a diorama's (a stair tread there rises most of a hero's height), so hero-sized things would be
+  climbed like stairs. A scene marks the places it built small with `W.navFine = [{ at: [x, z], r, step, low }]` (world
+  units): inside one, a step is `step` high and anything standing `low` above the ground blocks.
+- A pack holds 31 ramps at most (a dab's ramp shares a byte with its flags). The baker stops if a scene uses more: give
+  materials that share colours the same `r`.
+
 ## What is not here yet
+
+- Only the keeper's yard on Lighthouse rock is sculpted at the hero's size; the rest of the islet, its stairs included, is still
+  a diorama seen close.
 
 - No shops or sound.
 - Items can only be used in battle: HP and MP are full again at the start of every fight, so there is nothing to mend
