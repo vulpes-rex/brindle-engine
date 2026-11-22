@@ -219,24 +219,27 @@ no ground, holds an obstacle, or steps too far to its neighbour.
 ### Sculpting for the game's camera
 
 The game draws 9 pixels to a game unit: 180 to a world unit of Lighthouse rock, where the diorama itself was sculpted at 34. Seen
-that close, a diorama is large flat patches. The keeper's house and yard (`scenes/ink/lighthouse.cjs`, "sculpted for the game
-camera") show the other way to build: pieces sized to the hero (0.11 world units tall there), dabs laid about 2.5 times closer
-(`res` of a third of a diorama pixel, and `px` of the same handed to `S.window`, `S.door`, `S.barrel`, `S.crate` and
-`S.canopy`), and patterns with cells of 1 to 4 diorama pixels (`tile: [2, 2]`, `stone: [3, 2]`, `width: 1`, a lawn with
-`cell: 2`). That patch added about a fifth to the area's dabs.
+that close, a diorama is large flat patches. Its sizes are right (a character stands 6.4 game units, 0.32 world units there,
+and the keeper's door is 0.34 tall); what it lacks is detail. The keeper's house and yard (`scenes/ink/lighthouse.cjs`,
+"sculpted for the game camera") show how to give it some: dabs laid about 2.5 times closer (`res` of a third of a diorama
+pixel, and a `px` of half a diorama pixel handed to `S.window`, `S.door`, `S.barrel`, `S.crate` and `S.canopy`), patterns
+with cells of 1 to 4 diorama pixels (`tile: [2, 2]`, `stone: [3, 2]`, `width: 1`, a lawn with `cell: 2`), and more small
+things a screen: a timber frame on the walls, a well, a kitchen garden, pots, a lamp post. That patch added about three
+tenths to the area's dabs.
 
 Two things the baker needs to know about such a place:
 
-- The walk map's heights are a diorama's (a stair tread there rises most of a hero's height), so hero-sized things would be
-  climbed like stairs. A scene marks the places it built small with `W.navFine = [{ at: [x, z], r, step, low }]` (world
-  units): inside one, a step is `step` high and anything standing `low` above the ground blocks.
+- On the walk map anything up to 0.095 world units high is a step (that is what lets the party climb the stairs), so low
+  things standing together are climbed like a stair: flowers beside a fence's rails, a pot, the frame of a garden bed. A
+  scene marks the places it furnished this closely with `W.navFine = [{ at: [x, z], r, step, low }]` (world units): inside
+  one, a step is `step` high and anything standing `low` above the ground blocks. Keep stairs outside them.
 - A pack holds 31 ramps at most (a dab's ramp shares a byte with its flags). The baker stops if a scene uses more: give
   materials that share colours the same `r`.
 
 ## What is not here yet
 
-- Only the keeper's yard on Lighthouse rock is sculpted at the hero's size; the rest of the islet, its stairs included, is still
-  a diorama seen close.
+- Only the keeper's yard on Lighthouse rock has the detail the close camera wants; the rest of the islet is still a diorama
+  seen close.
 
 - No shops or sound.
 - Items can only be used in battle: HP and MP are full again at the start of every fight, so there is nothing to mend

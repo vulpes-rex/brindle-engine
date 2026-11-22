@@ -1,6 +1,6 @@
 // Lighthouse rock, rebuilt as an Ink Studio scene (sculpt -> bake -> finish). The layout is ported from our own HD scene at one
 // tenth scale: islet in tiers, striped lighthouse, keeper's house, shed, wall, steps, jetty, two boats, buoy, sea stacks, bent tree.
-// The keeper's house and its yard are the exception: they are sculpted for the game's camera, at the hero's size (see there).
+// The keeper's house and its yard are the exception: they are sculpted for the game's camera (see there).
 module.exports = ({ KIT: K, makeBuilder, makeSculpt }) => ({
   id: 'lighthouse-rock',
   name: 'Lighthouse rock',
@@ -123,10 +123,11 @@ module.exports = ({ KIT: K, makeBuilder, makeSculpt }) => ({
     bx([-0.96 + 0.265 * Math.cos(0.66) + 0.0, by + 0.19, -0.66 + 0.265 * Math.sin(0.66)], [px, 0.17, 0.07], boards('y'), 0.66, thin);
 
     // ---------------- the keeper's house and yard, sculpted for the game camera ----------------
-    // The game draws 9 pixels to a game unit (0.05 world units): 180 pixels a world unit, against this diorama's 34. So here the
-    // pieces are sized to the hero (0.11 tall), dabs are laid 2.5 times closer, and patterns use cells of 1 to 4 diorama pixels.
-    const hx = 0.8, hz = 0.3, hb = TOP; // (the old house's place: the wall round the top still steers clear of it)
-    const gp = px / 3, G = { res: gp * 1.2 }, GF = { res: gp * 0.9 }, N = { px: gp };
+    // The game draws 9 pixels to a game unit (0.05 world units): 180 pixels a world unit, against this diorama's 34. The hero stands
+    // 6.4 game units, 0.32 here, so the house was the right size all along; what the close camera lacked was detail. So here dabs
+    // are laid 2.5 times closer, patterns use cells of 1 to 4 diorama pixels, and the yard is furnished with things his size.
+    const hx = 0.8, hz = 0.3, hb = TOP;
+    const gp = px / 3, G = { res: gp * 1.2 }, GF = { res: gp * 0.9 }, N = { px: gp * 1.5 };
     const tilesG = K.pixel.tiles({ r: [20, 21, 22], tile: [2, 2] }),
       stoneG = K.pixel.masonry({ r: [1, 2, 3, 4], stone: [3, 2] }),
       wallG = K.pixel.masonry({ r: [16, 17, 18, 19], stone: [4, 2], joint: 1, vary: 0.3 }),
@@ -135,93 +136,93 @@ module.exports = ({ KIT: K, makeBuilder, makeSculpt }) => ({
       cobble = K.pixel.masonry({ r: [3, 4, 5, 5], stone: [2, 2], joint: 2, vary: 0.4 });
     const gx = (c, h, m, yaw, o) => S.box(c, h, m, Object.assign({}, G, yaw ? { ax: F(yaw) } : null, o)),
       rod = (a, b, r, m) => S.tube([a, b], r, r, m || wood, GF),
-      bush = (at, size, mat, seed) => S.canopy(Object.assign({ at, size, lobes: 3, mat, cluster: 3, bump: 1, seed, res: gp }, N));
+      bush = (at, size, mat, seed) => S.canopy(Object.assign({ at, size, lobes: 3, mat, cluster: 3, bump: 1, seed, res: gp * 1.2 }, N));
     // the yard's own grass: a finer lawn laid over the tier's
-    { const C0 = [0.78, 0.5], R = 0.92, th = gp * 2, ok = (x, z) => Math.hypot(x, z) < R && inside(plat, C0[0] + x, C0[1] + z, 0.1);
+    { const C0 = [0.86, 0.42], R = 1.02, th = gp * 2, ok = (x, z) => Math.hypot(x, z) < R && inside(plat, C0[0] + x, C0[1] + z, 0.1);
       S.solid([C0[0], TOP + gp * 0.8 - th / 2, C0[1]], R + 0.05, (x, y, z) => Math.max(Math.hypot(x, z) - R, Math.abs(y) - th / 2),
         (res, f) => { for (let z = -R; z <= R; z += res * 0.87) for (let x = -R; x <= R; x += res) if (ok(x, z)) f(x, th / 2, z); }, lawnG, { res: gp * 1.2, reach: gp * 3 }); }
-    const HX = 0.76, HZ = 0.42;
-    gx([HX, hb + 0.02, HZ], [0.3, 0.035, 0.23], stoneG);
-    gx([HX, hb + 0.2, HZ], [0.27, 0.15, 0.2], wallG);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) gx([HX + sx * 0.27, hb + 0.2, HZ + sz * 0.2], [0.014, 0.15, 0.014], wood);
-    for (const sz of [-1, 1]) gx([HX, hb + 0.345, HZ + sz * 0.2], [0.285, 0.012, 0.014], wood);
-    for (const sx of [-1, 1]) gx([HX + sx * 0.27, hb + 0.345, HZ], [0.014, 0.012, 0.2], wood);
-    S.solid([HX, hb + 0.35, HZ], 0.6, (x, y, z) => Math.max((Math.abs(x) + y - 0.27) * 0.7071, -y, Math.abs(z) - 0.2),
-      (res, f) => { for (const sz of [-0.2, 0.2]) for (let y = 0; y < 0.27; y += res * 0.87) for (let x = -(0.27 - y); x <= 0.27 - y; x += res) f(x, y, sz); },
+    // the house: a stone footing, whitewashed stone walls in a timber frame, a tiled roof
+    gx([hx, hb + 0.03, hz], [0.45, 0.07, 0.37], stoneG);
+    gx([hx, hb + 0.34, hz], [0.4, 0.26, 0.32], wallG);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) gx([hx + sx * 0.4, hb + 0.35, hz + sz * 0.32], [0.022, 0.25, 0.022], wood);
+    for (const sz of [-1, 1]) gx([hx, hb + 0.585, hz + sz * 0.32], [0.42, 0.02, 0.022], wood);
+    for (const sx of [-1, 1]) gx([hx + sx * 0.4, hb + 0.585, hz], [0.022, 0.02, 0.32], wood);
+    S.solid([hx, hb + 0.6, hz], 0.8, (x, y, z) => Math.max((Math.abs(x) + y - 0.4) * 0.7071, -y, Math.abs(z) - 0.32),
+      (res, f) => { for (const sz of [-0.32, 0.32]) for (let y = 0; y < 0.4; y += res * 0.87) for (let x = -(0.4 - y); x <= 0.4 - y; x += res) f(x, y, sz); },
       wallG, { res: gp * 1.2, reach: gp * 3 });
-    for (const s of [-1, 1]) S.box([HX + s * 0.16, hb + 0.35 + 0.135, HZ], [0.245, gp * 1.5, 0.265], tilesG, { res: gp * 1.2, ax: B.frame(0, 0, -s * Math.PI / 4) });
-    S.tube([[HX, hb + 0.645, HZ - 0.275], [HX, hb + 0.645, HZ + 0.275]], 0.018, 0.018, dark, GF);
-    for (const sz of [-1, 1]) for (const s of [-1, 1]) rod([HX + s * 0.3, hb + 0.345, HZ + sz * 0.262], [HX + s * 0.01, hb + 0.635, HZ + sz * 0.262], 0.011, wood); // barge boards
-    gx([HX + 0.13, hb + 0.6, HZ - 0.1], [0.04, 0.12, 0.04], stoneG); gx([HX + 0.13, hb + 0.73, HZ - 0.1], [0.052, 0.014, 0.052], dark);
-    [[0.15, 0.82, -0.09, 0.028], [0.2, 0.94, -0.07, 0.038], [0.28, 1.08, -0.03, 0.05]].forEach(q => S.ball([HX + q[0], hb + q[1], HZ + q[2]], [q[3] * 1.2, q[3], q[3] * 1.1], { r: [4, 5, 5] }, G));
-    S.door(Object.assign({ at: [HX - 0.08, hb + 0.055, HZ + 0.2], face: [0, 1], w: 0.08, h: 0.165, mat: boardsG('y'), frame: wood, iron: dark, arch: false }, N));
-    gx([HX - 0.08, hb + 0.03, HZ + 0.25], [0.07, 0.022, 0.04], stoneG);
-    gx([HX - 0.08, hb + 0.262, HZ + 0.245], [0.085, gp, 0.05], tilesG);
-    for (const s of [-1, 1]) rod([HX - 0.08 + s * 0.075, hb + 0.05, HZ + 0.285], [HX - 0.08 + s * 0.075, hb + 0.255, HZ + 0.285], 0.008, wood);
-    const hwG = (at, face, sd) => S.window(Object.assign({ at, face, w: 0.07, h: 0.075, frame: white, glass: lit, shutters: red, box: wood, flowers: { r: [8, 9, 23] }, seed: sd }, N));
-    hwG([HX + 0.12, hb + 0.21, HZ + 0.2], [0, 1], 3); hwG([HX + 0.27, hb + 0.21, HZ], [1, 0], 5); hwG([HX - 0.27, hb + 0.21, HZ + 0.03], [-1, 0], 7); hwG([HX + 0.02, hb + 0.21, HZ - 0.2], [0, -1], 9);
-    S.window(Object.assign({ at: [HX, hb + 0.45, HZ + 0.2], face: [0, 1], w: 0.04, h: 0.04, frame: white, glass: unlit, sill: false }, N));
-    lamp([HX + 0.12, hb + 0.21, HZ + 0.36], 0.6, 0.6); lamp([HX + 0.42, hb + 0.21, HZ], 0.55, 0.5); lamp([HX - 0.42, hb + 0.21, HZ + 0.03], 0.5, 0.45);
-    // by the door: a lamp on a post, a bench, pots
-    rod([HX - 0.2, hb, HZ + 0.3], [HX - 0.2, hb + 0.2, HZ + 0.3], 0.009, dark); rod([HX - 0.2, hb + 0.195, HZ + 0.3], [HX - 0.165, hb + 0.195, HZ + 0.3], 0.006, dark);
-    S.ball([HX - 0.165, hb + 0.17, HZ + 0.3], 0.017, lit, GF); gx([HX - 0.165, hb + 0.19, HZ + 0.3], [0.02, 0.005, 0.02], dark); lamp([HX - 0.165, hb + 0.17, HZ + 0.3], 0.5, 0.7);
-    gx([HX + 0.13, hb + 0.045, HZ + 0.27], [0.065, 0.007, 0.022], wood); for (const s of [-0.05, 0.05]) gx([HX + 0.13 + s, hb + 0.02, HZ + 0.27], [0.007, 0.022, 0.018], wood);
-    [[0.02, 0.26, 4], [0.24, 0.25, 6], [-0.19, 0.24, 8]].forEach(q => { S.lathe([HX + q[0], hb, HZ + q[1]], 0.03, [0.014, 0.02], red, GF); bush([HX + q[0], hb + 0.045, HZ + q[1]], [0.022, 0.02, 0.022], { r: [8, 9, 23] }, q[2]); });
-    // barrels, a bucket and the woodpile under the eaves
-    S.barrel(Object.assign({ at: [HX - 0.35, hb, HZ + 0.12], h: 0.1, r: 0.04, mat: boardsG('y'), hoop: dark }, N));
-    S.barrel(Object.assign({ at: [HX - 0.37, hb, HZ + 0.02], h: 0.085, r: 0.034, mat: boardsG('y'), hoop: dark }, N));
-    S.lathe([HX - 0.3, hb, HZ + 0.21], 0.035, [0.016, 0.021], wood, GF); S.lathe([HX - 0.3, hb + 0.028, HZ + 0.21], 0.004, [0.017, 0.017], unlit, GF);
-    for (let i = 0; i < 6; i++) for (let j = 0; j < 4 - (i % 5 ? 0 : 1); j++) S.tube([[HX - 0.2 + i * 0.033, hb + 0.018 + j * 0.031, HZ - 0.215], [HX - 0.2 + i * 0.033, hb + 0.018 + j * 0.031, HZ - 0.31]], 0.015, 0.015, (i + j) % 2 ? wood : { r: [25, 26, 27] }, GF);
-    gx([HX - 0.1, hb + 0.16, HZ - 0.265], [0.125, 0.006, 0.065], tilesG, 0, { ax: B.frame(0, 0.35, 0) });
-    // crates and sacks
-    S.crate(Object.assign({ at: [HX + 0.37, hb, HZ + 0.15], size: [0.04, 0.04, 0.04], mat: { r: [26, 27] }, edge: wood }, N));
-    S.crate(Object.assign({ at: [HX + 0.36, hb + 0.08, HZ + 0.15], size: [0.028, 0.028, 0.028], mat: { r: [26, 27] }, edge: wood }, N));
-    [[0.45, 0.13, 0.3], [0.44, 0.2, 1.2]].forEach(q => S.ball([HX + q[0], hb + 0.022, HZ + q[1]], [0.03, 0.022, 0.024], { r: [31, 32, 32] }, Object.assign({ ax: F(q[2]) }, GF)));
-    // the kitchen garden: a bed in a board frame, rows of greens, bean poles
-    { const bxc = 1.33, bzc = 0.12, bw = 0.17, bd = 0.14;
-      gx([bxc, hb + 0.012, bzc], [bw, 0.012, bd], wood);
-      for (const s of [-1, 1]) { gx([bxc, hb + 0.024, bzc + s * bd], [bw + 0.008, 0.024, 0.007], boardsG('x')); gx([bxc + s * bw, hb + 0.024, bzc], [0.007, 0.024, bd], boardsG('z')); }
-      for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) { const x = bxc - bw + 0.035 + c * 0.054, z = bzc - bd + 0.04 + r * 0.068, k = r * 6 + c;
-        if (r === 3) { rod([x, hb + 0.02, z], [x, hb + 0.13, z], 0.004, wood); bush([x, hb + 0.075, z], [0.014, 0.04, 0.014], leaf, k + 3); if (c % 2) S.ball([x + 0.01, hb + 0.06 + (c % 3) * 0.02, z + 0.012], 0.007, red, GF); }
-        else if (r === 1) { bush([x, hb + 0.034, z], [0.017, 0.012, 0.017], { r: [7, 8, 9] }, k + 5); }
-        else if (r === 0) { bush([x, hb + 0.04, z], [0.012, 0.02, 0.012], leaf, k + 9); S.ball([x, hb + 0.026, z + 0.012], 0.008, red, GF); }
-        else S.ball([x, hb + 0.036, z], [0.016, 0.013, 0.016], { r: [7, 8, 9] }, GF); }
-      // a watering can, and a scarecrow keeping watch
-      S.lathe([bxc - bw - 0.05, hb, bzc + 0.08], 0.035, [0.016, 0.014], copper, GF); rod([bxc - bw - 0.036, hb + 0.02, bzc + 0.08], [bxc - bw - 0.012, hb + 0.04, bzc + 0.08], 0.004, copper);
-      const sx = bxc + 0.06, sz = bzc - bd - 0.06; rod([sx, hb, sz], [sx, hb + 0.17, sz], 0.006, wood); rod([sx - 0.055, hb + 0.115, sz], [sx + 0.055, hb + 0.115, sz], 0.005, wood);
-      gx([sx, hb + 0.1, sz], [0.022, 0.03, 0.012], red); S.ball([sx, hb + 0.165, sz], 0.018, { r: [31, 32, 32] }, GF); S.lathe([sx, hb + 0.176, sz], 0.02, [0.032, 0.004], { r: [25, 26, 27] }, GF); }
-    // the well
-    { const wx = 0.12, wz = 0.74;
-      S.lathe([wx, hb, wz], 0.06, [0.062, 0.058], stoneG, G); S.lathe([wx, hb + 0.045, wz], 0.006, [0.044, 0.044], unlit, GF);
-      S.torus([wx, hb + 0.062, wz], 0.052, 0.009, { r: [3, 4, 5] }, GF);
-      for (const s of [-1, 1]) rod([wx + s * 0.058, hb, wz], [wx + s * 0.058, hb + 0.2, wz], 0.008, wood);
-      rod([wx - 0.062, hb + 0.165, wz], [wx + 0.062, hb + 0.165, wz], 0.007, wood);
-      for (const s of [-1, 1]) S.box([wx, hb + 0.215, wz + s * 0.03], [0.085, gp, 0.042], tilesG, { res: gp * 1.2, ax: B.frame(0, s * 0.6, 0) });
-      rod([wx, hb + 0.165, wz], [wx, hb + 0.1, wz], 0.003, { r: [31, 32] }); S.lathe([wx, hb + 0.075, wz], 0.028, [0.013, 0.016], wood, GF);
-      S.lathe([wx + 0.1, hb, wz + 0.05], 0.03, [0.014, 0.018], wood, GF); }
-    // flowers along the walls and the fence, stones in the grass
-    [[-0.2, 0.235, 0], [0.2, 0.235, 1], [0.3, 0.1, 2], [0.3, -0.1, 0], [-0.3, -0.12, 1], [0.22, -0.23, 2], [-0.02, -0.235, 0]].forEach((q, k) =>
-      bush([HX + q[0], hb + 0.022, HZ + q[1]], [0.032, 0.022, 0.026], [{ r: [8, 9, 23] }, { r: [7, 8, 19] }, { r: [8, 9, 29] }][q[2]], k * 7 + 2));
-    for (let k = 0; k < 11; k++) { const x = 0.47 + k * 0.062 + 0.012 * Math.sin(k * 2.3), z = 0.925 + 0.01 * Math.cos(k * 1.7); bush([x, hb + 0.02, z], [0.024, 0.02, 0.02], [{ r: [8, 9, 23] }, { r: [7, 8, 9] }, { r: [7, 8, 19] }][k % 3], k * 5 + 1); }
-    [[0.36, 0.52, 3], [1.18, 0.62, 5], [1.36, 0.42, 7], [0.98, 0.84, 9], [0.3, 0.3, 11], [0.86, 0.02, 15]].forEach(q =>
-      S.facet(Object.assign({ at: [q[0], hb + 0.012, q[1]], size: [0.03, 0.024, 0.026], faces: 7, seed: q[2], mat: rock, top: moss, res: gp * 1.2 }, N)));
-    [[1.1, 0.72, 2], [1.26, 0.5, 4], [0.3, 0.42, 6], [1.42, 0.86, 8], [0.62, 0.02, 10], [1.02, 0.1, 12]].forEach(q => bush([q[0], hb + 0.03, q[1]], [0.045, 0.034, 0.04], leaf, q[2] * 3 + 1));
-    // a young apple tree
-    { const tx = 1.52, tz = 0.56; S.tube([[tx, hb, tz], [tx + 0.01, hb + 0.1, tz], [tx - 0.01, hb + 0.17, tz + 0.01]], 0.016, 0.01, wood, GF);
-      S.canopy(Object.assign({ at: [tx, hb + 0.24, tz], size: [0.1, 0.085, 0.095], lobes: 5, mat: leaf, cluster: 4, bump: 1.4, seed: 21, res: gp * 1.1 }, N));
-      [[0.06, 0.2, 0.05], [-0.07, 0.23, 0.03], [0.02, 0.19, -0.08], [-0.03, 0.27, 0.085], [0.085, 0.26, -0.02]].forEach(q => S.ball([tx + q[0], hb + q[1], tz + q[2]], 0.011, red, GF)); }
+    for (const sz of [-1, 1]) { gx([hx, hb + 0.6 + 0.2, hz + sz * 0.325], [0.016, 0.19, 0.012], wood); gx([hx, hb + 0.6 + 0.14, hz + sz * 0.325], [0.2, 0.014, 0.012], wood); } // a king post and a collar on each gable
+    for (const s of [-1, 1]) S.box([hx + s * 0.235, hb + 0.6 + 0.2, hz], [0.36, px * 0.9, 0.4], tilesG, { res: gp * 1.2, ax: B.frame(0, 0, -s * Math.PI / 4) });
+    S.tube([[hx, hb + 1.04, hz - 0.41], [hx, hb + 1.04, hz + 0.41]], 0.03, 0.03, dark, GF);
+    for (const sz of [-1, 1]) for (const s of [-1, 1]) rod([hx + s * 0.47, hb + 0.575, hz + sz * 0.405], [hx + s * 0.02, hb + 1.025, hz + sz * 0.405], 0.016, wood); // barge boards
+    gx([hx + 0.2, hb + 0.98, hz - 0.15], [0.07, 0.2, 0.07], stoneG); gx([hx + 0.2, hb + 1.2, hz - 0.15], [0.09, 0.025, 0.09], dark);
+    [[0.23, 1.33, -0.13, 0.045], [0.31, 1.52, -0.1, 0.06], [0.44, 1.75, -0.04, 0.075]].forEach(q => S.ball([hx + q[0], hb + q[1], hz + q[2]], [q[3] * 1.2, q[3], q[3] * 1.1], { r: [4, 5, 5] }, fine));
+    S.door(Object.assign({ at: [hx - 0.12, hb + 0.1, hz + 0.32], face: [0, 1], w: 0.16, h: 0.34, mat: boardsG('y'), frame: wood, iron: dark, arch: false }, N));
+    gx([hx - 0.12, hb + 0.06, hz + 0.41], [0.13, 0.035, 0.07], stoneG);
+    gx([hx - 0.12, hb + 0.53, hz + 0.41], [0.16, gp * 1.2, 0.1], tilesG);
+    for (const s of [-1, 1]) rod([hx - 0.12 + s * 0.14, hb + 0.09, hz + 0.48], [hx - 0.12 + s * 0.14, hb + 0.52, hz + 0.48], 0.013, wood);
+    const hw = (at, face, sd) => S.window(Object.assign({ at, face, w: 0.13, h: 0.14, frame: white, glass: lit, shutters: red, box: wood, flowers: { r: [8, 9, 23] }, seed: sd }, N));
+    hw([hx + 0.22, hb + 0.37, hz + 0.32], [0, 1], 3); hw([hx + 0.4, hb + 0.37, hz], [1, 0], 5); hw([hx - 0.4, hb + 0.37, hz + 0.05], [-1, 0], 7); hw([hx + 0.05, hb + 0.37, hz - 0.32], [0, -1], 9);
+    S.window(Object.assign({ at: [hx, hb + 0.78, hz + 0.32], face: [0, 1], w: 0.07, h: 0.07, frame: white, glass: unlit, sill: false }, N));
+    lamp([hx + 0.22, hb + 0.37, hz + 0.55], 0.9, 0.6); lamp([hx + 0.62, hb + 0.37, hz], 0.8, 0.5); lamp([hx - 0.62, hb + 0.37, hz + 0.05], 0.7, 0.45);
+    // by the door: a lamp on a post, a bench with a back, pots of flowers
+    { const lx = hx - 0.33, lz = hz + 0.42; rod([lx, hb, lz], [lx, hb + 0.44, lz], 0.016, dark); rod([lx, hb + 0.43, lz], [lx + 0.08, hb + 0.43, lz], 0.01, dark);
+      gx([lx + 0.08, hb + 0.36, lz], [0.026, 0.035, 0.026], lit); gx([lx + 0.08, hb + 0.4, lz], [0.036, 0.008, 0.036], dark); gx([lx + 0.08, hb + 0.322, lz], [0.03, 0.006, 0.03], dark); lamp([lx + 0.08, hb + 0.36, lz + 0.1], 0.8, 0.7); }
+    gx([hx + 0.19, hb + 0.11, hz + 0.44], [0.13, 0.012, 0.042], boardsG('x')); for (const s of [-0.1, 0.1]) gx([hx + 0.19 + s, hb + 0.05, hz + 0.44], [0.012, 0.05, 0.034], wood);
+    gx([hx + 0.19, hb + 0.19, hz + 0.405], [0.13, 0.035, 0.008], boardsG('x'));
+    [[0.02, 0.4, 4], [0.36, 0.41, 6]].forEach(q => { S.lathe([hx + q[0], hb, hz + q[1]], 0.07, [0.03, 0.044], red, GF); bush([hx + q[0], hb + 0.11, hz + q[1]], [0.048, 0.045, 0.048], { r: [8, 9, 23] }, q[2]); });
+    // on the west side: a rain barrel under the eaves, a bucket, the woodpile under its own little roof
+    S.barrel(Object.assign({ at: [hx - 0.52, hb, hz + 0.24], h: 0.23, r: 0.09, mat: boardsG('y'), hoop: dark }, N));
+    S.lathe([hx - 0.5, hb, hz + 0.44], 0.075, [0.034, 0.044], wood, GF); S.lathe([hx - 0.5, hb + 0.06, hz + 0.44], 0.006, [0.036, 0.036], unlit, GF);
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 4 - (i > 3 ? 1 : 0); j++) S.tube([[hx - 0.66 + i * 0.066, hb + 0.036 + j * 0.062, hz - 0.3], [hx - 0.66 + i * 0.066, hb + 0.036 + j * 0.062, hz - 0.1]], 0.03, 0.03, (i + j) % 2 ? wood : { r: [25, 26, 27] }, GF);
+    for (const sz of [-0.31, -0.09]) for (const sx of [-0.7, -0.36]) rod([hx + sx, hb, hz + sz], [hx + sx, hb + 0.33, hz + sz], 0.012, wood);
+    S.box([hx - 0.53, hb + 0.345, hz - 0.2], [0.2, gp * 1.2, 0.14], tilesG, { res: gp * 1.2, ax: B.frame(0, 0, 0.22) });
+    // crates and sacks at the corner
+    S.crate(Object.assign({ at: [hx + 0.52, hb, hz + 0.44], size: [0.075, 0.075, 0.075], mat: { r: [26, 27] }, edge: wood }, N));
+    S.crate(Object.assign({ at: [hx + 0.5, hb + 0.15, hz + 0.44], size: [0.052, 0.052, 0.052], mat: { r: [26, 27] }, edge: wood }, N));
+    [[0.66, 0.4, 0.3], [0.64, 0.52, 1.2]].forEach(q => S.ball([hx + q[0], hb + 0.045, hz + q[1]], [0.065, 0.047, 0.05], { r: [31, 32, 32] }, Object.assign({ ax: F(q[2]) }, GF)));
+    // the kitchen garden east of the house: a bed in a board frame, rows of greens, bean poles, a scarecrow
+    { const bxc = 1.47, bzc = 0.02, bw = 0.14, bd = 0.25;
+      gx([bxc, hb + 0.022, bzc], [bw, 0.022, bd], wood);
+      for (const s of [-1, 1]) { gx([bxc, hb + 0.035, bzc + s * bd], [bw + 0.012, 0.035, 0.011], boardsG('x')); gx([bxc + s * bw, hb + 0.035, bzc], [0.011, 0.035, bd], boardsG('z')); }
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) { const x = bxc - bw + 0.05 + c * 0.09, z = bzc - bd + 0.06 + r * 0.095, k = r * 3 + c;
+        if (r === 0) { rod([x, hb + 0.04, z], [x, hb + 0.3, z], 0.007, wood); bush([x, hb + 0.17, z], [0.03, 0.09, 0.03], leaf, k + 3); if (c !== 1) S.ball([x + 0.022, hb + 0.13 + c * 0.03, z + 0.026], 0.014, red, GF); }
+        else if (r === 2 || r === 4) bush([x, hb + 0.075, z], [0.036, 0.028, 0.036], { r: [7, 8, 9] }, k + 5);
+        else if (r === 1) { bush([x, hb + 0.085, z], [0.024, 0.045, 0.024], leaf, k + 9); S.ball([x, hb + 0.055, z + 0.026], 0.016, red, GF); }
+        else S.ball([x, hb + 0.075, z], [0.034, 0.03, 0.034], { r: [7, 8, 9] }, GF); }
+      S.lathe([bxc - bw - 0.06, hb, bzc + 0.3], 0.075, [0.034, 0.03], copper, GF); rod([bxc - bw - 0.03, hb + 0.045, bzc + 0.3], [bxc - bw + 0.02, hb + 0.085, bzc + 0.3], 0.008, copper);
+      const sx = bxc + 0.02, sz = bzc - bd - 0.1; rod([sx, hb, sz], [sx, hb + 0.37, sz], 0.012, wood); rod([sx - 0.12, hb + 0.26, sz], [sx + 0.12, hb + 0.26, sz], 0.01, wood);
+      gx([sx, hb + 0.22, sz], [0.05, 0.065, 0.026], red); S.ball([sx, hb + 0.36, sz], 0.04, { r: [31, 32, 32] }, GF); S.lathe([sx, hb + 0.385, sz], 0.045, [0.07, 0.008], { r: [25, 26, 27] }, GF); }
+    // the well, by the path from the tower
+    { const wx = 0.06, wz = 0.9;
+      S.lathe([wx, hb, wz], 0.13, [0.135, 0.125], stoneG, G); S.lathe([wx, hb + 0.1, wz], 0.012, [0.095, 0.095], unlit, GF);
+      S.torus([wx, hb + 0.135, wz], 0.112, 0.02, { r: [3, 4, 5] }, GF);
+      for (const s of [-1, 1]) rod([wx + s * 0.125, hb, wz], [wx + s * 0.125, hb + 0.44, wz], 0.016, wood);
+      rod([wx - 0.135, hb + 0.36, wz], [wx + 0.135, hb + 0.36, wz], 0.014, wood);
+      for (const s of [-1, 1]) S.box([wx, hb + 0.47, wz + s * 0.065], [0.18, gp * 1.2, 0.09], tilesG, { res: gp * 1.2, ax: B.frame(0, s * 0.6, 0) });
+      rod([wx, hb + 0.36, wz], [wx, hb + 0.22, wz], 0.006, { r: [31, 32] }); S.lathe([wx, hb + 0.16, wz], 0.06, [0.028, 0.034], wood, GF);
+      S.lathe([wx + 0.2, hb, wz - 0.06], 0.07, [0.03, 0.04], wood, GF); }
+    // flowers along the walls and inside the fence, stones and tussocks in the grass
+    [[-0.3, 0.38, 0], [0.47, 0.15, 2], [0.47, -0.2, 0], [-0.47, -0.02, 1], [0.3, -0.39, 2], [-0.12, -0.39, 0]].forEach((q, k) =>
+      bush([hx + q[0], hb + 0.045, hz + q[1]], [0.065, 0.045, 0.05], [{ r: [8, 9, 23] }, { r: [7, 8, 19] }, { r: [8, 9, 29] }][q[2]], k * 7 + 2));
+    for (let k = 0; k < 8; k++) { const x = 0.5 + k * 0.082 + 0.014 * Math.sin(k * 2.3), z = 0.905 + 0.012 * Math.cos(k * 1.7); bush([x, hb + 0.035, z], [0.04, 0.034, 0.032], [{ r: [8, 9, 23] }, { r: [7, 8, 9] }, { r: [7, 8, 19] }][k % 3], k * 5 + 1); }
+    [[0.3, 0.5, 3], [1.3, 0.7, 5], [1.62, 0.36, 7], [0.24, 0.26, 11], [0.95, -0.2, 15], [1.2, 1.05, 9]].forEach(q =>
+      S.facet(Object.assign({ at: [q[0], hb + 0.02, q[1]], size: [0.05, 0.04, 0.045], faces: 7, seed: q[2], mat: rock, top: moss, res: gp * 1.2 }, N)));
+    [[1.28, 0.42, 2], [0.26, 0.4, 6], [0.62, -0.16, 10], [1.02, 1.08, 12]].forEach(q => bush([q[0], hb + 0.05, q[1]], [0.075, 0.055, 0.065], leaf, q[2] * 3 + 1));
+    // an apple tree behind the house
+    { const tx = 1.05, tz = -0.5; S.tube([[tx, hb, tz], [tx + 0.02, hb + 0.2, tz], [tx - 0.02, hb + 0.36, tz + 0.02]], 0.034, 0.022, wood, GF);
+      S.canopy(Object.assign({ at: [tx, hb + 0.52, tz], size: [0.21, 0.17, 0.2], lobes: 5, mat: leaf, cluster: 4, bump: 1.4, seed: 21, res: gp * 1.3 }, N));
+      [[0.13, 0.43, 0.11], [-0.15, 0.5, 0.07], [0.04, 0.41, -0.17], [-0.06, 0.58, 0.18], [0.18, 0.56, -0.04], [-0.1, 0.44, -0.12]].forEach(q => S.ball([tx + q[0], hb + q[1], tz + q[2]], 0.022, red, GF)); }
     // washing line
     { const a = [-1.35, 0.35], b = [-0.85, 0.85], ra = Math.atan2(b[1] - a[1], b[0] - a[0]); post(a[0], a[1], by - 0.03, by + 0.47, 0.022); post(b[0], b[1], by - 0.03, by + 0.47, 0.022);
       S.tube([[a[0], by + 0.45, a[1]], [b[0], by + 0.45, b[1]]], 0.01, 0.01, white, thin);
       [red, white, { r: [12, 13, 14] }, copper, white].forEach((m, k) => { const f = 0.14 + k * 0.18, h = 0.07 + (k % 2) * 0.025; bx([a[0] + (b[0] - a[0]) * f, by + 0.44 - h, a[1] + (b[1] - a[1]) * f], [0.05, h, px * 0.6], m, ra, thin); }); }
     // picket fence, the low wall round the top, the path
-    for (let k = 0; k <= 24; k++) { const x = 0.44 + k * 0.0283, z = 0.96, tall = k % 6 === 0; if (inside(plat, x, z, 0.06)) gx([x, hb + (tall ? 0.058 : 0.048), z], [tall ? 0.01 : 0.007, tall ? 0.058 : 0.048, 0.006], white); }
-    for (const y of [0.032, 0.074]) rod([0.44, hb + y, 0.957], [1.12, hb + y, 0.957], 0.005, white);
-    gx([0.78, hb + 0.03, 0.9535], [0.34, 0.03, 0.003], white); // (a board behind the pickets: the walk map needs the fence solid)
-    for (let k = 3; k < 26; k++) { if (k === 15 || k === 16 || k === 17) continue; const a = k * 0.2417, x = cx + 1.3 * Math.cos(a), z = cz + 1.16 * Math.sin(a); if (!inside(plat, x, z, 0.1) || Math.hypot(x - hx, z - hz) < 0.62 || Math.hypot(x + 0.96, z + 0.66) < 0.42) continue;
+    for (let k = 0; k <= 16; k++) { const x = hx - 0.36 + k * 0.0425, z = hz + 0.66, post = k % 4 === 0; if (inside(plat, x, z, 0.06)) gx([x, hb + (post ? 0.105 : 0.09), z], [post ? 0.016 : 0.011, post ? 0.105 : 0.09, post ? 0.012 : 0.007], white); }
+    for (const y of [0.06, 0.135]) rod([hx - 0.36, hb + y, hz + 0.652], [hx + 0.32, hb + y, hz + 0.652], 0.008, white);
+    for (let k = 3; k < 26; k++) { if (k === 15 || k === 16 || k === 17) continue; const a = k * 0.2417, x = cx + 1.3 * Math.cos(a), z = cz + 1.16 * Math.sin(a); if (!inside(plat, x, z, 0.1) || Math.hypot(x - hx, z - hz) < 0.62 || Math.hypot(x + 0.96, z + 0.66) < 0.42 || Math.hypot(x - 0.06, z - 0.9) < 0.36) continue;
       bx([x, by + 0.05, z], [0.075, 0.055, 0.05], stone, a + Math.PI / 2); if (k % 2) bx([x + 0.02, by + 0.14, z], [0.07, 0.045, 0.048], stone, a + 1.6); }
-    const path = (a, b, w) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); gx([(a[0] + b[0]) / 2, TOP + gp * 1.1, (a[1] + b[1]) / 2], [l / 2 + 0.012, gp * 0.9, w], cobble, Math.atan2(b[1] - a[1], b[0] - a[0])); };
-    path([0.02, 0.22], [0.42, 0.76], 0.05); path([0.42, 0.76], [0.68, 0.74], 0.045); path([0.42, 0.76], [0.5, 0.93], 0.05); path([0.42, 0.76], [0.2, 0.75], 0.035); path([0.68, 0.74], [1.5, 0.92], 0.045);
+    const path = (a, b, w) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); gx([(a[0] + b[0]) / 2, TOP + gp * 1.1, (a[1] + b[1]) / 2], [l / 2 + 0.02, gp * 0.9, w], cobble, Math.atan2(b[1] - a[1], b[0] - a[0])); };
+    path([0.02, 0.22], [0.42, 0.76], 0.07); path([0.42, 0.76], [0.68, 0.76], 0.065); path([0.42, 0.76], [0.26, 0.86], 0.05); path([0.68, 0.76], [1.42, 0.86], 0.065);
 
     // ---------------- steps, landing, jetty ----------------
     const jy = 0.21, jz = 1.3;
@@ -295,7 +296,7 @@ module.exports = ({ KIT: K, makeBuilder, makeSculpt }) => ({
       look: { pixel: true, outline: true, clean: true }
     });
     W.lantern = LANTERN;
-    W.navFine = [{ at: [0.78, 0.5], r: 0.9, step: 0.014, low: 0.02 }]; // the yard is built to the hero's size: see tools/bake-ink-area.cjs
+    W.navFine = [{ at: [0.75, 0.3], r: 0.8, step: 0.03, low: 0.045 }, { at: [0.06, 0.9], r: 0.3, step: 0.03, low: 0.045 }, { at: [1.47, 0.0], r: 0.42, step: 0.03, low: 0.045 }]; // the house front, the well and the garden: see tools/bake-ink-area.cjs
     return W;
   }
 });

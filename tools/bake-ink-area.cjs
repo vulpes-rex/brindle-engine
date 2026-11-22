@@ -90,9 +90,10 @@ if(SCALE){
   const put=(arr,x,z,y,r)=>{const cx=Math.floor((x+EXT)/fc+1e-6),cz=Math.floor((z+EXT)/fc+1e-6);for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){const X=cx+dx,Z=cz+dz;if(X<0||Z<0||X>=NF||Z>=NF)continue;const j=Z*NF+X;(arr[j]||(arr[j]=[])).push(y);}};
   for(let i=0;i<N;i++){if(!seen[i]||(FLG[i]&2))continue;const q=i*16,y=d[q+1];if(y<0.02)continue;put(any,d[q],d[q+2],y,0);if(NRM[i*3+1]>0.6)put(ups,d[q],d[q+2],y,1);}
   const GF=new Float32Array(NF*NF).fill(-999),OB=new Uint8Array(NF*NF);
-  // The numbers above suit a diorama, where a stair tread rises most of a hero's height. A scene can mark places it built to the hero's
-  // own size (W.navFine = [{ at: [x, z], r, step, low }], world units): inside one, a step is only `step` high and anything
-  // standing `low` above the ground already blocks, so a picket fence or a flower pot is not climbed like a stair.
+  // With the numbers above anything up to 0.095 high is a step, which the stairs need; but low things standing together (flowers
+  // beside a fence's rails, a pot, the frame of a garden bed) are then climbed like a stair too. A scene can mark the places it
+  // furnished that closely (W.navFine = [{ at: [x, z], r, step, low }], world units): inside one, a step is only `step` high and
+  // anything standing `low` above the ground already blocks. Stairs belong outside them.
   const FINE=w.navFine||[],fineAt=j=>{const x=(j%NF+0.5)*fc-EXT,z=(Math.floor(j/NF)+0.5)*fc-EXT;for(const f of FINE)if(Math.hypot(x-f.at[0],z-f.at[1])<f.r)return f;return null;};
   for(let j=0;j<NF*NF;j++){const u=ups[j];if(!u)continue;const fn=fineAt(j),ST=fn?fn.step:STEP,LW=fn?fn.low:LO;u.sort((a,b)=>a-b);let g=u[0];for(let k=1;k<u.length;k++){if(u[k]-g<=ST)g=u[k];else break;}
     GF[j]=g;if(any[j])for(const y of any[j])if(y>g+LW&&y<g+HI){OB[j]=1;break;}}
