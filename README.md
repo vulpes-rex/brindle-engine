@@ -193,6 +193,21 @@ node tools/navcheck.cjs packs/lighthouse 1.0,0.5,4.1,1.75 3.1,1.4 0.6,0.86   # p
 node tools/genmap.mjs game/scenes/brindlebrook.js                            # places and walk map of a generated scene
 ```
 
+A monster does not have to be sculpted in Ink Studio. `tools/convert-rig.mjs` turns a rigged, animated GLB (a generated or
+hand-made model) into the same pack entry, and needs nothing installed:
+
+```sh
+node tools/convert-rig.mjs model.glb packs/monsters.json fox --size 11 --splats 6000 --idle Survey --attack Run
+```
+
+It scatters splats over the model's surface, colours them from its texture (reduced to a dozen flat colours), keeps the two
+bones that hold each splat most, and samples the clips at 20 fps. `idle` loops one of the model's clips and `attack` is cut
+from another; `hurt` and `defeat` are made from the idle pose (a flinch, a fall on its side), since models rarely bring
+their own. Foes face +x, towards the party: `--yaw` turns a model that comes out facing the wrong way. It prints the `top`,
+`mid` and `rad` to give the monster in `game/monsters.json`. It reads one skeleton, PNG textures (others fall back to the
+material's colour) and linear or step animation; cubic splines are read as linear. `bake-monsters.cjs` writes the whole pack
+anew, so run the converter after it.
+
 The cast's sprites are a pack too (`packs/sprites`: `sheet.png` and `sheet.json`), baked by `tools/bake-sprites.mjs` from the
 art PixelLab generated (`art/pixellab/<name>/`) or, for anyone without it, from the cast drawn by code. Generating needs a
 PixelLab account and its API token, in `PIXELLAB_API_KEY` or a file `.pixellab-token` (which git ignores):
