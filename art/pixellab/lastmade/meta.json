@@ -1,0 +1,17 @@
+{
+  "character_id": "884b5539-fec0-44c3-86eb-a00c4c4fc9d5",
+  "description": "the Lastmade, a young woman knight with a dark chin-length bob and a straight fringe, a thin gold sunburst halo of rays behind her head, a wine-red cowl scarf, a long white cape lined in wine red, a white surcoat with gold trim over slim steel plate armour, an amber glass pauldron on her left shoulder, steel gauntlets, tall steel greaves over tan leather boots, a small brown satchel at her right hip, a narrow longsword sheathed at her left hip, a small brass hand-bell in her right hand",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "mode": "pro"
+  },
+  "made_with": "the PixelLab connector: Pro mode, designed from the knight turnaround (OpenArt xG2MzHS0kKCoEDzuSHrs), in the style of character 4c792929-0c79-4756-ac70-6b3ca51f4a52 (Tam); walk from the walking template, battle idle from the idle-breathing template, attack, cast and hurt as custom PixMiniMax animations",
+  "made": "2026-11-27",
+  "walk": "remade 27 November 2026 with the V3 walking action (PixelLab animation \"walk-v3\", 8 frames), which starts from her standing sprite: the walk template had redrawn her without her cape, sword and bell",
+  "fixed_by_hand": [
+    "every north-facing frame (standing, walk, battle): her halo, taken from the front view with the whole ring showing, and the amber pauldron on her left shoulder, the front view's mirrored",
+    "every west-facing frame (standing, walk): the pauldron, taken from the south-west view"
+  ],
+  "fix_tool": "a script kept outside the repository (fix-items.mjs) finds her head in each frame and sets the pieces by it; the frames here are its output"
+}

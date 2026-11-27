@@ -1,0 +1,18 @@
+{
+  "character_id": "c416ba45-5892-4564-b509-0bc3c600b796",
+  "description": "Wren, the pale ghost of a small lamp-boy about eight years old, his whole body and clothes pale blue-white and faintly glowing, short messy hair, an oversized patched work smock with rolled sleeves, a rope harness across his chest, a little tin cup at his belt, bare feet, holding one softly glowing feather in his hands",
+  "settings": {
+    "size": 64,
+    "view": "low top-down",
+    "mode": "pro"
+  },
+  "made_with": "the PixelLab connector: Pro mode, designed from Wren's sheet (OpenArt pqQCYVREgz4lYxDSVvfa), in the style of character b98d8501-db99-489e-98a1-0242ff26ac06 (Pip); walk from the walking template, battle idle from the idle-breathing template, attack, cast and hurt as custom PixMiniMax animations",
+  "made": "2026-11-27",
+  "state": "the PixelLab state \"With feather\" of character d40d7e5d-2460-42f0-b690-1a06693efe3e, made 27 November 2026 so that he holds the feather in every direction and has solid legs in the side views",
+  "walk": "the V3 walking action (animation \"walk-v3\", 8 frames); the south walk is a custom V3 animation (\"walk-south-feather\") started from the fixed south sprite",
+  "fixed_by_hand": [
+    "the south standing sprite: the feather set in his raised hand, taken from the south-east view",
+    "north attack frames 3 and 5: a stray speed line through his head removed",
+    "north-west attack: the feather and its trail had turned bright green, put back to the feather's own pale glow"
+  ]
+}

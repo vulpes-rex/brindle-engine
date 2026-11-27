@@ -209,6 +209,8 @@ export class Nav {
     if (gj < 0 || this.BL[gj]) return null;
     const cells = this.astar(sj, gj);
     if (!cells) return null;
+    // (a goal in the cell the start is in gives no cells to cross: the route is then the one short leg to the goal)
+    if (!cells.length) return [[to[0], to[1]]];
     const pts = [[from[0], from[1]]];
     for (const j of cells) pts.push(this.center(j));
     pts[pts.length - 1] = [to[0], to[1]];

@@ -11,7 +11,14 @@
 //
 // Generated art is given selective outlines on the way: a dark line pixel takes a deep shade of the colour beside it rather
 // than black (as Xenogears' sprites are drawn). --ppu sets sprite pixels per game unit; by default it is worked out so a
-// character stands about 6.4 game units tall.
+// character stands about 6.4 game units tall. A character with a "scale" in art/pixellab/cast.json is drawn that much
+// smaller or larger by the game (its art is left as it is).
+//
+// A folder art/pixellab/<name>-side/ holds that character's side-view set: drawn at eye level, in profile, for the views
+// that look at the world side-on. Only its two profile facings are used, east and west, and they join <name>'s other
+// animations as strips: run (its walk/<direction>/ frames), and whichever of idle, rise, fall and land it has in anims/.
+// The field plays them (engine/pose.js). Rise and fall are poses in the air: their frames are drawn with the figure
+// centred on where it stands (see cropStrip).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -101,6 +108,9 @@ function selout(im) {
 // ---- the cast
 const code = makeSprites(),
   cast = code.names,
+  // (art/pixellab/cast.json may give a character a "scale": a child stands smaller than the grown cast, drawn from the same size of art)
+  castFile = path.join(root, 'art/pixellab/cast.json'),
+  scales = fs.existsSync(castFile) ? Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(castFile, 'utf8')).cast || {}).map(([k, v]) => [k, v.scale || 1])) : {},
   // a frame of the code-drawn sheet: its five drawn facings, the west side mirrored
   codeFrame = (ci, row, col) => {
     const mirror = { 'north-west': 3, west: 2, 'south-west': 1 }[ROWS[row]],
@@ -110,20 +120,56 @@ const code = makeSprites(),
     return mirror === undefined ? im : flip(im);
   };
 
+// an image cut (or padded) to w x h about its middle, with `up` more rows above and `down` below; says so if that loses
+// any of the drawing
+function fit(im, w, h, up, down, what) {
+  if (im.w === w && im.h === h && !up && !down) return im;
+  const H = h + up + down,
+    o = blank(w, H),
+    ox = (im.w - w) >> 1,
+    oy = ((im.h - h) >> 1) - up;
+  let lost = 0;
+  for (let y = 0; y < im.h; y++)
+    for (let x = 0; x < im.w; x++) {
+      const i = at(im, x, y);
+      if (im.data[i + 3] < 128) continue;
+      const X = x - ox,
+        Y = y - oy;
+      if (X < 0 || Y < 0 || X >= w || Y >= H) lost++;
+      else o.data.set(im.data.subarray(i, i + 4), at(o, X, Y));
+    }
+  if (lost) console.log('  ' + what + ': ' + lost + ' pixels fell outside the ' + w + ' x ' + H + ' cell');
+  return o;
+}
+
 const chars = cast.map((name, ci) => {
   const dir = path.join(root, 'art/pixellab', name);
   if (!CODE_ONLY && fs.existsSync(path.join(dir, 'rotations', 'south.png'))) {
-    const rows = ROWS.map(d => {
+    const raw = ROWS.map(d => {
       const walkDir = path.join(dir, 'walk', d),
         walk = fs.existsSync(walkDir)
           ? fs
               .readdirSync(walkDir)
               .filter(f => f.endsWith('.png'))
               .sort((a, b) => parseInt(a) - parseInt(b))
-              .map(f => selout(readPng(path.join(walkDir, f))))
+              .map(f => readPng(path.join(walkDir, f)))
           : [];
-      return [selout(readPng(path.join(dir, 'rotations', d + '.png'))), ...walk];
+      return [readPng(path.join(dir, 'rotations', d + '.png')), ...walk];
     });
+    // A walk may be drawn on a larger canvas than the standing sprite, with room to move. Its frames are cut to the
+    // standing sprite's width about the middle; where a step lifts the head (or drops a foot) past the standing canvas,
+    // all of this character's frames get that many more rows, so nothing is cut off and the feet stay on one row.
+    let up = 0,
+      down = 0;
+    for (const r of raw)
+      for (const im of r.slice(1)) {
+        const oy = (im.h - r[0].h) >> 1,
+          q = span(im);
+        if (q.foot < 0) continue;
+        up = Math.max(up, oy - q.top);
+        down = Math.max(down, q.foot - oy - (r[0].h - 1));
+      }
+    const rows = raw.map((r, k) => r.map((im, col) => selout(fit(im, r[0].w, r[0].h, up, down, name + (col ? ' walk ' : ' standing ') + ROWS[k]))));
     const n = Math.max(...rows.map(r => r.length));
     // (a direction short of walk frames repeats its last)
     for (const r of rows) while (r.length < n) r.push(r[r.length - 1]);
@@ -140,7 +186,31 @@ const chars = cast.map((name, ci) => {
             .sort((x, y) => parseInt(x) - parseInt(y))
             .map(f => selout(readPng(path.join(animDir, a, d, f))));
       }
-    return { name, src: 'pixellab', rows, anims, stand: 0, walk: n > 1 ? [...Array(n - 1).keys()].map(i => i + 1) : [0] };
+    // its side-view set, if it has one: the two profile facings, as animations of this character; with, for each, the row
+    // of its canvas the standing figure's feet are on (the ground under a pose in the air)
+    const sideDir = dir + '-side',
+      ground = {};
+    if (fs.existsSync(path.join(sideDir, 'rotations')))
+      for (const d of ['east', 'west']) {
+        const row = ROWS.indexOf(d),
+          standing = readPng(path.join(sideDir, 'rotations', d + '.png')),
+          load = folder =>
+            fs
+              .readdirSync(folder)
+              .filter(f => f.endsWith('.png'))
+              .sort((x, y) => parseInt(x) - parseInt(y))
+              .map(f => selout(readPng(path.join(folder, f)))),
+          add = (a, folder) => {
+            if (!fs.existsSync(folder)) return;
+            const frames = load(folder);
+            if (!frames.length) return;
+            (anims[a] = anims[a] || {})[row] = frames;
+            (ground[a] = ground[a] || {})[row] = span(standing).foot + ((frames[0].h - standing.h) >> 1);
+          };
+        add('run', path.join(sideDir, 'walk', d));
+        if (fs.existsSync(path.join(sideDir, 'anims'))) for (const a of fs.readdirSync(path.join(sideDir, 'anims')).sort()) add(a, path.join(sideDir, 'anims', a, d));
+      }
+    return { name, src: 'pixellab', rows, anims, ground, stand: 0, walk: n > 1 ? [...Array(n - 1).keys()].map(i => i + 1) : [0] };
   }
   return { name, src: 'code', rows: ROWS.map((d, row) => [0, 1, 2, 3].map(col => codeFrame(ci, row, col))), stand: 1, walk: [0, 1, 2, 3] };
 });
@@ -157,8 +227,10 @@ for (const c of chars)
   }
 for (const c of chars) c.anims = c.anims || {};
 
-// an animation's frames cropped together to what they use, kept centred on the canvas's middle
-function cropStrip(frames) {
+// an animation's frames cropped together to what they use, kept centred on the canvas's middle. The row its feet stand on
+// is the first frame's lowest, unless `ground` gives it (for poses in the air, whose feet are not on the ground: the row
+// the standing sprite's feet are on, were it in the middle of this canvas)
+function cropStrip(frames, ground) {
   const W = frames[0].w,
     H = frames[0].h,
     cx = W / 2,
@@ -175,11 +247,11 @@ function cropStrip(frames) {
   const half = Math.min(cx, Math.ceil(Math.max(cx - l, r + 1 - cx)) + 1),
     x0 = Math.floor(cx - half),
     top = Math.max(0, Math.min(...s.map(q => q.top)) - 1),
-    bottom = Math.min(H - 1, Math.max(...s.map(q => q.foot)) + 1),
+    bottom = Math.min(H - 1, Math.max(ground === undefined ? -1 : ground, ...s.map(q => q.foot)) + 1),
     w = 2 * half,
     h = bottom - top + 1;
   return {
-    foot: s[0].foot - top,
+    foot: (ground === undefined ? s[0].foot : ground) - top,
     frames: frames.map(im => {
       const o = blank(w, h);
       for (let y = 0; y < h; y++) o.data.set(im.data.subarray(at(im, x0, top + y), at(im, x0 + w, top + y)), y * w * 4);
@@ -187,7 +259,11 @@ function cropStrip(frames) {
     })
   };
 }
-for (const c of chars) for (const byRow of Object.values(c.anims)) for (const row of Object.keys(byRow)) byRow[row] = cropStrip(byRow[row]);
+// (rise and fall are poses in the air: the ground is where the side set's standing figure has its feet)
+const AIR = ['rise', 'fall'];
+for (const c of chars)
+  for (const [a, byRow] of Object.entries(c.anims))
+    for (const row of Object.keys(byRow)) byRow[row] = cropStrip(byRow[row], AIR.includes(a) && c.ground && c.ground[a] ? c.ground[a][row] : undefined);
 
 // one cell size for all, every character's feet on the same row
 const SW = Math.max(...chars.map(c => c.rows[0][0].w)),
@@ -201,14 +277,26 @@ const SW = Math.max(...chars.map(c => c.rows[0][0].w)),
 
 // ---- the sheet: each character a block of (frames x 8 facings); below, the other animations as strips, then the
 // knocked-out frames and the icons (kept within 2048 pixels across, which every WebGL 2 device can take)
-const cols = Math.max(...chars.map(c => c.rows[0].length)),
-  per = Math.max(1, Math.min(chars.length, Math.floor(2048 / (cols * SW)))),
-  blockW = cols * SW,
-  blockH = ROWS.length * SH,
-  stripY = Math.ceil(chars.length / per) * blockH,
+// (a character's block is as wide as its own frames: one with a longer walk does not widen the rest)
+const blockH = ROWS.length * SH,
+  blocks = [],
   strips = [];
+{
+  let bx = 0,
+    by = 0;
+  for (const c of chars) {
+    const w = c.rows[0].length * SW;
+    if (bx && bx + w > 2048) {
+      bx = 0;
+      by += blockH;
+    }
+    blocks.push([bx, by, w]);
+    bx += w;
+  }
+}
+const stripY = Math.max(...blocks.map(b => b[1])) + blockH;
 const stripH = Math.max(SH, ...chars.flatMap(c => Object.values(c.anims).flatMap(byRow => Object.values(byRow).map(s => s.frames[0].h)))),
-  sheetW = Math.max(per * blockW, ...chars.flatMap(c => Object.values(c.anims).flatMap(byRow => Object.values(byRow).map(s => s.frames.length * s.frames[0].w))));
+  sheetW = Math.max(...blocks.map(b => b[0] + b[2]), ...chars.flatMap(c => Object.values(c.anims).flatMap(byRow => Object.values(byRow).map(s => s.frames.length * s.frames[0].w))));
 let sx = 0,
   sy = stripY;
 for (const c of chars)
@@ -234,11 +322,11 @@ const koY = strips.length ? sy + stripH : stripY,
   },
   meta = { ppu, cell: [SW, SH], foot, top: Math.min(...tops), wide, stride: STRIDE, rows: ROWS, cast: {}, ko: {}, icons: {} };
 chars.forEach((c, i) => {
-  const bx = (i % per) * blockW,
-    by = Math.floor(i / per) * blockH,
+  const [bx, by] = blocks[i],
     dx = Math.floor((SW - c.rows[0][0].w) / 2);
   c.rows.forEach((r, row) => r.forEach((im, col) => paste(im, bx + col * SW + dx, by + row * SH + lift[i])));
   meta.cast[c.name] = { at: [bx, by], stand: c.stand, walk: c.walk, from: c.src };
+  if (c.src === 'pixellab' && scales[c.name] && scales[c.name] !== 1) meta.cast[c.name].size = scales[c.name];
   for (const s of strips.filter(s => s.c === c)) {
     const fw = s.frames[0].w,
       fh = s.frames[0].h;

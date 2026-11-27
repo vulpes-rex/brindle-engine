@@ -1,0 +1,14 @@
+{
+  "character_id": "80d4d33c-6cd5-4201-9199-247c54fb9301",
+  "made": "2026-11-27",
+  "made_with": "the PixelLab connector: Pro mode, view 'side', designed from the knight turnaround (OpenArt xG2MzHS0kKCoEDzuSHrs) in the style of the Lastmade's own character (884b5539-fec0-44c3-86eb-a00c4c4fc9d5)",
+  "walk": "east and west are the V3 running action (animation 'run', 8 frames); only these two profile facings are used by the game (the rotations of the other six are kept here as PixelLab made them, with north replaced by the fixed one from art/pixellab/lastmade)",
+  "anims": {
+    "idle": "the idle-breathing action, east and west, 8 frames",
+    "rise": "frames 5, 6, 7 of the custom V3 animation 'jump' (13 frames: crouch, spring, tuck, drop, land)",
+    "fall": "frames 8, 9 of 'jump'",
+    "land": "frames 10, 11 of 'jump', as drawn"
+  },
+  "aligned": "rise and fall frames were moved up or down so the figure is centred on where she stands (the game moves a jumping figure itself): the head was matched to the standing sprite's, then a tucked figure lowered by half of what its legs are short of the ground",
+  "about": "The Lastmade's side-view set, for the views that look at the world side-on. tools/bake-sprites.mjs adds its east and west run, idle, rise, fall and land to the character 'lastmade' as animations; engine/pose.js plays them."
+}

@@ -37,6 +37,13 @@ test('a route goes through the gap, in a few straight legs', () => {
   }
 });
 
+test('a route to a point in the cell one already stands in is its one short leg', () => {
+  const nav = map(rows),
+    reach = nav.flood(-5, -5),
+    path = nav.route([-5.2, -5.2], [-5.6, -5.7], reach);
+  assert.deepEqual(path, [[-5.6, -5.7]]);
+});
+
 test('no route to a sealed room or into a wall; flood and nearFree agree', () => {
   const sealed = rows.map((r, z) => (z === 10 ? '####################' : r)),
     nav = map(sealed),

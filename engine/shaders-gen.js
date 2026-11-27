@@ -3,8 +3,8 @@
 
 // world -> clip space. Orthographic when uPersp is 0 (the field); battles add a little perspective. Depth stays linear in the
 // distance from the focus, so the finishing pass reads it the same way either way.
-const PROJ=`uniform float uPersp;
-vec4 proj(vec3 p){vec3 w=p-uFocus;float X=w.x*uCam.x+w.z*uCam.y;float Z=w.z*uCam.x-w.x*uCam.y;float d=Z*uCam.z-w.y*uCam.w;
+const PROJ=`uniform float uPersp;uniform float uRoll;
+vec4 proj(vec3 p){vec3 w=p-uFocus;float X=w.x*uCam.x+w.z*uCam.y;float Z=w.z*uCam.x-w.x*uCam.y;w.y-=uRoll*Z*Z;float d=Z*uCam.z-w.y*uCam.w;
 float q=max(1.0+d*uPersp,0.05);return vec4(X*uScale,(w.y*uCam.z+Z*uCam.w)*uScale,d/110.0*q,q);}`;
 export const VS=`#version 300 es
 precision highp float;
@@ -71,8 +71,8 @@ gl_Position=vec4((px+q*k)/h,P.z/P.w-up*uCam.w/110.0-uBias,1.0);
 float u=aC.x*0.5+0.5;vUV=vec2(uFlip>0.5?1.0-u:u,0.5-aC.y*0.5);}`;
 export const SF=`#version 300 es
 precision highp float;
-in vec2 vUV;uniform sampler2D uT;uniform vec4 uRect;uniform vec3 uTint;uniform float uSil;out vec4 o;
-void main(){ivec2 q=ivec2(uRect.xy+clamp(vUV,0.0,0.9999)*uRect.zw);vec4 c=texelFetch(uT,q,0);if(c.a<0.5)discard;
+in vec2 vUV;uniform sampler2D uT;uniform vec4 uRect;uniform vec3 uTint;uniform float uSil;uniform float uAdd;out vec4 o;
+void main(){ivec2 q=ivec2(uRect.xy+clamp(vUV,0.0,0.9999)*uRect.zw);vec4 c=texelFetch(uT,q,0);if(uAdd>0.5){o=vec4(c.rgb*uTint,1.0);return;}if(c.a<0.5)discard;
 if(uSil>0.5){ivec2 f=ivec2(gl_FragCoord.xy/uSil);if(((f.x+f.y)&1)==0)discard;o=vec4(0.13,0.17,0.34,1.0);}else o=vec4(c.rgb*uTint,1.0);}`;
 export const DV=`#version 300 es
 precision highp float;
@@ -84,15 +84,27 @@ void main(){vec4 P=proj(uPos+vec3(aC.x*uR,0.0,aC.y*uR));P.z-=uB*P.w;gl_Position=
 export const DF=`#version 300 es
 precision highp float;
 in vec2 vUV;uniform vec4 uCol;uniform float uMode;out vec4 o;
-void main(){float r=length(vUV);if(uMode<0.5){if(r>1.0)discard;o=vec4(uCol.rgb,1.0);}else{if(abs(r-0.78)>0.22)discard;o=vec4(uCol.rgb,1.0);}}`;
+void main(){float r=length(vUV);if(uMode<0.5){if(r>1.0)discard;o=vec4(uCol.rgb,1.0);}else if(uMode<1.5){if(abs(r-0.78)>0.22)discard;o=vec4(uCol.rgb,1.0);}else{if(abs(r-0.95)>0.05)discard;o=vec4(uCol.rgb,1.0);}}`;
 export const PV=`#version 300 es
 out vec2 vUV;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUV=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
 export const PF=`#version 300 es
 precision highp float;
-in vec2 vUV;uniform sampler2D uC;uniform sampler2D uD;uniform vec2 uPx;uniform vec3 uBg;uniform float uPix;uniform float uDim;uniform vec4 uFlash;out vec4 o;
+in vec2 vUV;uniform sampler2D uC;uniform sampler2D uD;uniform vec2 uPx;uniform vec3 uBg;uniform float uPix;uniform float uDim;uniform vec4 uFlash;uniform float uHD;uniform vec2 uStrip;uniform float uCave;out vec4 o;
+// the strip trial's backdrop: an evening sky and two ranges of hills that slide by at different speeds as the view moves
+float hill(float x){return sin(x)*0.5+sin(x*2.3+1.7)*0.28+sin(x*5.1+0.4)*0.12+sin(x*11.0+2.0)*0.05;}
+vec3 backdrop(vec2 uv){
+// (under rock: dark, rock hanging from above and heaped below, sliding by as the sky's hills do)
+if(uCave>0.5){vec3 k=mix(vec3(0.016,0.02,0.05),vec3(0.05,0.065,0.13),uv.y);
+float s1=0.74-0.10*abs(hill(uv.x*9.0+uStrip.y*1.4));if(uv.y>s1)k=vec3(0.032,0.04,0.085);
+float s2=0.86-0.09*abs(hill(uv.x*5.0+3.0+uStrip.y*2.6));if(uv.y>s2)k=vec3(0.014,0.016,0.036);
+float f1=0.17+0.06*hill(uv.x*4.0+7.0+uStrip.y*2.0);if(uv.y<f1)k=vec3(0.022,0.026,0.055);return k;}
+vec3 c=mix(vec3(0.98,0.74,0.52),vec3(0.22,0.36,0.62),smoothstep(0.42,1.0,uv.y));c=mix(c,vec3(0.99,0.9,0.7),smoothstep(0.62,0.46,uv.y)*0.6);
+float h1=0.60+0.07*hill(uv.x*5.0+uStrip.y*0.9);if(uv.y<h1)c=mix(vec3(0.36,0.44,0.62),c,0.25);
+float h2=0.52+0.06*hill(uv.x*3.2+4.0+uStrip.y*1.8);if(uv.y<h2)c=vec3(0.20,0.30,0.42);
+float h3=0.44+0.05*hill(uv.x*2.1+9.0+uStrip.y*3.2);if(uv.y<h3)c=vec3(0.12,0.22,0.24);return c;}
 const float B[16]=float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0);
 void main(){vec4 c=texture(uC,vUV);float d=texture(uD,vUV).r;vec2 q=vUV-0.5;vec3 col;
-if(d>=0.99999){col=(uBg*(1.25-1.1*dot(q,q))+vec3(0.10,0.12,0.10)*(0.5-q.y))*(1.0-uDim)+c.rgb;}
+if(d>=0.99999){col=(uBg*(1.25-1.1*dot(q,q))+vec3(0.10,0.12,0.10)*(0.5-q.y))*(1.0-uDim)+c.rgb;if(uStrip.x>0.0)col=mix(col,backdrop(vUV)*(1.0-uDim)+c.rgb,uStrip.x);}
 else{float m=0.0;
 m=max(m,texture(uD,vUV+vec2(uPx.x*1.5,0.0)).r-d);m=max(m,texture(uD,vUV-vec2(uPx.x*1.5,0.0)).r-d);
 m=max(m,texture(uD,vUV+vec2(0.0,uPx.y*1.5)).r-d);m=max(m,texture(uD,vUV-vec2(0.0,uPx.y*1.5)).r-d);
@@ -103,6 +115,15 @@ float df=(d-texture(uD,vUV+vec2(cos(a),sin(a))*uPx*rad).r)*220.0;occ+=clamp((df-
 col=c.rgb;
 if(c.a<0.5)col*=(1.0-0.5*occ/8.0)*mix(1.0,0.5,edge);
 col=pow(col,vec3(0.94))*(1.08-0.4*dot(q,q));}
+// the HD-2D treatment (a trial): things away from the focus's depth go soft, as through a tilted lens; bright things bloom;
+// the lights are warmed and the shadows cooled, under a heavier vignette
+if(uHD>0.0){vec3 sky=(uBg*(1.25-1.1*dot(q,q))+vec3(0.10,0.12,0.10)*(0.5-q.y))*(1.0-uDim);float blur=clamp(abs(d-0.5)*120.0-0.7,0.0,6.0)*uHD;if(d>=0.99999)blur=mix(6.0,1.5,uStrip.x)*uHD;vec3 acc=col;float wsum=1.0;vec3 glow=vec3(0.0);
+for(int i=0;i<16;i++){float a=float(i)*2.39996;float rr=sqrt((float(i)+0.5)/16.0);vec2 off=vec2(cos(a),sin(a))*rr;
+vec4 s=texture(uC,vUV+off*uPx*blur);float sd=texture(uD,vUV+off*uPx*blur).r;if(sd>=0.99999)s.rgb=(uStrip.x>0.0?mix(sky,backdrop(vUV+off*uPx*blur),uStrip.x):sky)+s.rgb;float w=(sd>=d-0.004||blur>3.0*uHD)?1.0:0.25;acc+=s.rgb*w;wsum+=w;
+vec3 g=texture(uC,vUV+off*uPx*22.0*uHD).rgb;glow+=max(g-0.82,0.0);}
+col=mix(col,acc/wsum,clamp(blur,0.0,1.0));col+=glow/16.0*1.6;
+float lum=dot(col,vec3(0.3,0.59,0.11));col=mix(col*vec3(0.92,0.97,1.1),col*vec3(1.1,1.02,0.9),smoothstep(0.25,0.8,lum));
+col=(col-0.5)*1.1+0.5;col*=1.06-0.75*dot(q,q);}
 col+=uFlash.rgb*uFlash.a;
 if(uPix>0.5){ivec2 ip=ivec2(gl_FragCoord.xy)&3;col=floor(col*31.0+(B[ip.y*4+ip.x]+0.5)/16.0)/31.0;}
 o=vec4(col,1.0);}`;
@@ -149,6 +170,23 @@ a+=0.35*exp(-6.0*r*r);}
 else a=band(r,0.85,0.06)*0.9;
 o=vec4(vCol.rgb*a*vCol.a,a*vCol.a>0.6?1.0:0.0);}`;
 // darkens what is already drawn (Psynergy dims the scene behind its effect)
+// a mesh (engine/meshes.js): textured with unfiltered pixel art (a white texel when it has none), tinted by its vertex
+// colours, each face flat (from the picture's own slopes) and lit in bands
+export const TV=`#version 300 es
+precision highp float;
+layout(location=0) in vec3 aP;layout(location=1) in vec3 aC;layout(location=2) in vec2 aUV;
+uniform vec4 uCam;uniform vec3 uFocus;uniform float uScale;uniform vec3 uPos;uniform float uSize;uniform vec2 uRot;uniform float uCK;
+${PROJ}
+out vec3 vC;out vec3 vW;out vec2 vUV;
+void main(){vec3 p=vec3(aP.x*uRot.x+aP.z*uRot.y,aP.y,aP.z*uRot.x-aP.x*uRot.y)*uSize+uPos;vW=p;vC=aC*uCK;vUV=aUV;gl_Position=proj(p);}`;
+export const TF=`#version 300 es
+precision highp float;
+in vec3 vC;in vec3 vW;in vec2 vUV;uniform sampler2D uT;uniform vec4 uCam;uniform vec3 uTint;uniform vec4 uL[6];uniform vec3 uLC[6];uniform vec3 uAmb;out vec4 o;
+void main(){vec4 t=texture(uT,vUV);if(t.a<0.5)discard;
+vec3 n=normalize(cross(dFdx(vW),dFdy(vW)));vec3 V=vec3(uCam.y*uCam.z,uCam.w,-uCam.x*uCam.z);if(dot(n,V)<0.0)n=-n;
+float l=max(dot(n,normalize(vec3(-0.45,0.8,-0.4))),0.0);l=l>0.6?1.0:(l>0.35?0.86:(l>0.1?0.72:0.6));
+vec3 lit=uAmb*l;for(int i=0;i<6;i++){if(uL[i].w<=0.0)continue;vec3 dv=uL[i].xyz-vW;float k=clamp(1.0-length(dv)/uL[i].w,0.0,1.0);lit+=uLC[i]*k*k*1.1;}
+o=vec4(t.rgb*vC*lit*uTint,0.0);}`;
 export const MF=`#version 300 es
 precision highp float;
 uniform float uK;out vec4 o;void main(){o=vec4(vec3(uK),1.0);}`;

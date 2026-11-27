@@ -53,7 +53,7 @@ export function decodeMonster(d) {
 }
 
 // Pose monster m at time tm of a clip, standing at (ox, oy, oz); dis 0..1 dissolves it (a defeat). Fills m.F and m.NB.
-export function skinMonster(m, clip, tm, ox, oy, oz, dis) {
+export function skinMonster(m, clip, tm, ox, oy, oz, dis, yaw) {
   const c = m.clips[clip],
     nb = m.nb,
     last = c.nf - 1;
@@ -72,6 +72,20 @@ export function skinMonster(m, clip, tm, ox, oy, oz, dis) {
     o0 = i0 * nb * 12,
     o1 = i1 * nb * 12;
   for (let i = 0; i < nb * 12; i++) BM[i] = fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * a;
+  // turned about the upright axis (a hero's model faces whatever it is acting on; the foes are baked facing the party)
+  if (yaw) {
+    const cy = Math.cos(yaw),
+      sy = Math.sin(yaw);
+    for (let k = 0; k < nb; k++)
+      for (const j of [0, 1, 2, 9]) {
+        const q = k * 12 + j,
+          r = j === 9 ? k * 12 + 11 : q + 6,
+          x = BM[q],
+          z = BM[r];
+        BM[q] = cy * x + sy * z;
+        BM[r] = cy * z - sy * x;
+      }
+  }
   // (normals turn by each bone's cofactor matrix, so squash and stretch keep them upright)
   for (let k = 0; k < nb; k++) {
     const q = k * 12,

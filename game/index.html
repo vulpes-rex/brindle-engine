@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Brindlebrook</title>
+<title>Underhymn</title>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0b1218;--panel:#16222b;--line:#2b3e4a;--ink:#eef2ea;--dim:#9db0ac;--leaf:#8cc05a;--glow:#ffe896;--box:#1a2440;--boxline:#cfd8ff}
@@ -31,6 +31,8 @@ header span{font-size:13px;color:var(--dim)}
 #cred{margin:2px 0 0;font-size:11px;line-height:1.3;color:#6f8582}
 #hint{margin:0;min-height:2.6em;font-size:14px;line-height:1.3;color:var(--dim)}
 #opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#opts:has(#hd:not([hidden])){grid-template-columns:repeat(5,minmax(0,1fr))}
+#hd[hidden]{display:none}
 button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:2px solid var(--line);padding:6px;min-height:46px;cursor:pointer}
 button.on{border-color:var(--leaf);color:var(--glow)}
 button:active{background:#20323d}
@@ -52,6 +54,24 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 .num{position:absolute;transform:translate(-50%,-50%);font-size:22px;font-weight:600;color:#fff;letter-spacing:2px;text-shadow:1px 0 0 #1a2050,-1px 0 0 #1a2050,0 1px 0 #1a2050,0 -1px 0 #1a2050,1px 1px 0 #1a2050,-1px 1px 0 #1a2050,1px -1px 0 #1a2050,-1px -1px 0 #1a2050,0 3px 0 #0a0f20;animation:pop 1.1s forwards;white-space:nowrap}
 .num.heal{color:#8ff58a}
 .num.txt{font-size:15px;color:var(--glow)}
+.num.timed{color:#ffe98a;font-size:17px;margin-top:-22px}
+/* side-on: the arrows that change lane, laid over the picture where a column meets the lane one is on */
+.way{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;width:36px;height:30px;min-height:0;padding:0;font-size:15px;line-height:1;color:#fff;background:rgba(16,28,102,.62);border:2px solid rgba(226,232,255,.7);border-radius:5px;text-shadow:0 1px 0 #000;opacity:.8}
+.way.near{opacity:1;color:var(--glow);border-color:var(--glow);background:rgba(29,47,150,.85)}
+/* side-on: an analog stick at the foot of the picture on the left, and two action buttons on the right (A lower, B up
+   and to its left, as on a controller) */
+#pad{position:absolute;left:0;right:0;bottom:2px;display:none;justify-content:space-between;align-items:flex-end;padding:0 2px;pointer-events:none}
+#pad.on{display:flex}
+#stick{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:relative;width:116px;height:116px}
+#stick::before{content:"";position:absolute;left:12px;top:12px;width:92px;height:92px;box-sizing:border-box;border-radius:50%;background:rgba(16,28,102,.42);border:2px solid rgba(226,232,255,.55)}
+#stick i{position:absolute;left:35px;top:35px;width:46px;height:46px;box-sizing:border-box;border-radius:50%;background:rgba(29,47,150,.8);border:2px solid rgba(226,232,255,.85);box-shadow:0 1px 0 rgba(0,0,0,.5)}
+#stick.down i{background:rgba(45,66,190,.95);border-color:var(--glow)}
+#pad span{display:flex;align-items:flex-end;gap:8px;padding:0 6px 8px 0}
+#pad button{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:58px;height:58px;min-height:0;padding:0;border-radius:50%;font-size:19px;font-weight:bold;line-height:1;color:#fff;background:rgba(16,28,102,.6);border:2px solid rgba(226,232,255,.7);text-shadow:0 1px 0 #000;opacity:.88}
+#pad button small{font-size:9px;font-weight:normal;letter-spacing:.3px}
+#pad button[hidden]{display:none}
+#pad #pb{margin-bottom:30px}
+#pad button.down{background:rgba(29,47,150,.92);border-color:var(--glow);color:var(--glow)}
 /* numbers spring up, land with a little bounce, sit, and go (as in Golden Sun) */
 @keyframes pop{0%{margin-top:6px;opacity:0;scale:.6}8%{margin-top:-22px;opacity:1;scale:1.15}20%{margin-top:0;scale:1}28%{margin-top:-7px}36%{margin-top:0}80%{opacity:1}100%{margin-top:-4px;opacity:0}}
 .cur{position:absolute;transform:translate(-50%,-100%);color:var(--glow);font-size:14px;text-shadow:0 1px 0 #000,1px 0 0 #000,-1px 0 0 #000;animation:bob .7s steps(2) infinite}
@@ -111,9 +131,10 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 </head>
 <body>
 <main id="app">
-<header><h1 id="ttl">Brindlebrook</h1><span id="sub"></span></header>
+<header><h1 id="ttl">Underhymn</h1><span id="sub"></span></header>
 <div id="stage"><canvas id="cv"></canvas>
 <div id="ov"></div>
+<div id="pad"><div id="stick" role="slider" aria-label="Walk"><i></i></div><span><button id="pb" aria-label="Act: talk to or use what is nearest">B<small>Act</small></button><button id="pa" aria-label="Jump">A<small>Jump</small></button></span></div>
 <div id="bparty"></div>
 <div id="dlg" class="gs off" role="dialog" aria-live="polite"><div id="cho" class="gs off"></div><div id="who"></div><p id="say"></p><div id="more">&#9660;</div></div>
 <div id="menu" class="off" role="dialog" aria-label="Menu"></div>
@@ -122,7 +143,7 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 <div id="title" class="off"><p id="tmsg"></p><div id="tbtn"></div></div>
 <div id="load" role="status">Preparing&hellip;</div></div>
 <p id="hint"></p>
-<div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="mn" aria-label="Open the menu">Menu</button></div>
+<div id="opts"><button id="rl" aria-label="Turn the view left">&#8630; Turn</button><button id="rr" aria-label="Turn the view right">Turn &#8631;</button><button id="px" class="on" aria-pressed="true">Pixel</button><button id="hd" aria-pressed="false" hidden>HD-2D</button><button id="mn" aria-label="Open the menu">Menu</button></div>
 <div id="bp" class="off"><div id="bmsg" class="gs" role="status" aria-live="polite"></div><div id="bcmd" class="gs"></div></div>
 <p id="cred">Lighthouse rock and the monsters were sculpted with Ink Studio by Silicon Jungle (MIT licence), then baked to data that this page draws itself.</p>
 </main>

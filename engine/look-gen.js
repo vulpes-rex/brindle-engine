@@ -25,6 +25,8 @@ export class GenLook {
     this.P5 = program(gl, G.DV, G.DF); // ground decals
     this.P6 = program(gl, G.XV, G.XF); // battle effects
     this.P7 = program(gl, G.PV, G.MF); // dimming
+    this.P8 = program(gl, G.TV, G.TF); // low-poly meshes (a trial beside the splats)
+    this.meshGpu = new Map();
     this.present = presenter(gl);
     this.cT = Math.cos(TILT);
     this.sT = Math.sin(TILT);
@@ -187,6 +189,7 @@ export class GenLook {
       n: r.n,
       nav: w ? new Nav({ NU: w.NU, C: w.C, N: w.N, RS: w.RS, BL: w.BL, GH: w.GH, SH: w.SH }) : null,
       poi: w ? w.poi : {},
+      ledges: w ? w.ledges || [] : [],
       yaw0: r.meta.ry0
     };
   }
@@ -215,7 +218,7 @@ export class GenLook {
     const gl = this.gl,
       cv = this.cv,
       cw = this.stage.clientWidth || 360,
-      dpr = Math.min(window.devicePixelRatio || 1, 3),
+      dpr = Math.min(window.devicePixelRatio || 1, this.hd ? 2 : 3), // (the HD-2D trial is heavy: it draws at most twice the page's size)
       dev = Math.max(240, Math.round(cw * dpr));
     let w, cw2, css;
     if (this.pixel) ({ w, cw: cw2, css } = artSize(this.stage, this.base));
@@ -226,7 +229,9 @@ export class GenLook {
     }
     if (cv.width !== cw2 || cv.height !== cw2) cv.width = cv.height = cw2;
     if (cv.style.width !== css) cv.style.width = cv.style.height = css;
-    this.S = Math.max(1, Math.round(w / this.base));
+    // (in smooth mode the picture may be drawn smaller than the page shows it, when frames run slow: the art keeps the size
+    // it has on the page, so the view takes in the same ground whatever the quality)
+    this.S = this.pixel ? Math.max(1, Math.round(w / this.base)) : (Math.max(1, Math.round(cw2 / this.base)) * w) / cw2;
     this.uScale = (this.S * 2 * this.ppu * this.zoom) / w;
     if (w === this.fw) return;
     this.fw = w;
@@ -287,8 +292,18 @@ export class GenLook {
       s = Math.sin(this.ry),
       X = dx * c + dz * s,
       Z = dz * c - dx * s,
-      q = Math.max(1 + (Z * this.cT - dy * this.sT) * this.persp, 0.05);
-    return [(X * this.uScale) / q, ((dy * this.cT + Z * this.sT) * this.uScale) / q];
+      yy = dy - (this.roll || 0) * Z * Z,
+      q = Math.max(1 + (Z * this.cT - yy * this.sT) * this.persp, 0.05);
+    return [(X * this.uScale) / q, ((yy * this.cT + Z * this.sT) * this.uScale) / q];
+  }
+
+  // how large something at a point is drawn, against the same thing at the focus: 1 unless the view has a lens
+  scaleAt(x, y, z) {
+    const dx = x - this.F3[0],
+      dz = z - this.F3[2],
+      Z = dz * Math.cos(this.ry) - dx * Math.sin(this.ry),
+      yy = y - this.F3[1] - (this.roll || 0) * Z * Z;
+    return 1 / Math.max(1 + (Z * this.cT - yy * this.sT) * this.persp, 0.05);
   }
 
   // the size of one sprite pixel on the picture (-1..1 units), at the focus
@@ -298,6 +313,44 @@ export class GenLook {
 
   // a place on the picture -> the ground under it, or null (for the field's camera: no perspective)
   pick(nx, ny, nav) {
+    // through a lens or over rolling ground a tap is no straight ray, and ground far off can fold back behind what is
+    // near: of the ground points that draw close to the tap, take the one nearest the eye, then settle on it finely
+    if (this.roll || this.persp) {
+      const c = Math.cos(this.ry),
+        s = Math.sin(this.ry),
+        R = (1.3 * this.uScale) ** 2,
+        at = (x, z) => {
+          if (nav.cell(x, z) < 0) return null;
+          const g = nav.gh(x, z);
+          if (g <= -900) return null;
+          const p = this.project(x, g, z),
+            Z = (z - this.F3[2]) * c - (x - this.F3[0]) * s;
+          return [(p[0] - nx) * (p[0] - nx) + (p[1] - ny) * (p[1] - ny), Z];
+        };
+      let best = null,
+        bz = 1e9;
+      for (let z = -79.5; z < 80; z++)
+        for (let x = -79.5; x < 80; x++) {
+          const q = at(x, z);
+          if (q && q[0] < R && q[1] < bz) ((bz = q[1]), (best = [x, z]));
+        }
+      if (!best) return null;
+      // (a low view squeezes depth, so the nearest-drawn point may lie well to one side of that first find)
+      let fine = best,
+        fd = 1e9;
+      for (const [span, step] of [
+        [9, 0.5],
+        [0.75, 0.125]
+      ]) {
+        const [ox, oz] = fine;
+        for (let dz = -span; dz <= span; dz += step)
+          for (let dx = -span; dx <= span; dx += step) {
+            const q = at(ox + dx, oz + dz);
+            if (q && q[0] < fd && Math.abs(q[1] - bz) < 14) ((fd = q[0]), (fine = [ox + dx, oz + dz]));
+          }
+      }
+      return fine;
+    }
     const cT = this.cT,
       sT = this.sT;
     const c = Math.cos(this.ry),
@@ -314,6 +367,7 @@ export class GenLook {
     gl.useProgram(P.p);
     gl.uniform4f(P.u('uCam'), Math.cos(this.ry), Math.sin(this.ry), this.cT, this.sT);
     gl.uniform1f(P.u('uPersp'), this.persp);
+    gl.uniform1f(P.u('uRoll'), this.roll || 0);
     gl.uniform3f(P.u('uFocus'), this.F3[0], this.F3[1], this.F3[2]);
     gl.uniform1f(P.u('uScale'), this.uScale);
   }
@@ -344,11 +398,18 @@ export class GenLook {
       sc = this.scene,
       t = fr.t,
       { P1, P2, P3, P4, P5, P6, P7 } = this,
-      tilt = fr.cam.tilt === undefined ? TILT : fr.cam.tilt;
+      // (the strip trial: the field seen low and side-on, the ground rolling away behind like the face of a drum. A camera
+      // of its own, a battle's, may say how much of that view it wants, 0..1, to ease out of it and back)
+      strip = fr.cam.strip !== undefined ? Math.max(0, Math.min(1, fr.cam.strip)) : this.strip && fr.cam.tilt === undefined ? 1 : 0,
+      tilt = fr.cam.tilt !== undefined ? fr.cam.tilt : strip ? this.stripTilt || 0.17 : TILT;
+    this.roll = strip * (this.stripRoll === undefined ? 0.0065 : this.stripRoll);
+    // (what the picture was last drawn with, for whoever takes the camera over)
+    this.viewTilt = tilt;
+    this.viewStrip = strip;
     this.cT = Math.cos(tilt);
     this.sT = Math.sin(tilt);
     this.zoom = fr.cam.zoom || 1;
-    this.persp = fr.cam.persp || 0;
+    this.persp = fr.cam.persp || (strip > 0.5 ? 1 / 85 : this.hd ? 1 / 150 : 0); // (the HD-2D trial looks through a lens in the field too)
     this.resize();
     const cT = this.cT,
       sT = this.sT;
@@ -359,6 +420,7 @@ export class GenLook {
       const c = Math.cos(this.ry),
         s = Math.sin(this.ry);
       let [fx, fy, fz] = fr.cam.focus;
+      if (strip) fy += strip * (this.stripLift === undefined ? 7 : this.stripLift); // the walk sits in the lower third
       if (fr.cam.shake > 0) {
         fx += Math.sin(t * 71) * 0.55 * fr.cam.shake;
         fy += Math.sin(t * 93) * 0.35 * fr.cam.shake;
@@ -401,6 +463,7 @@ export class GenLook {
     gl.uniform3f(P1.u('uFlashC'), 1, 1, 1);
     let drawn = 0;
     for (const tl of sc.tiles) {
+      if (this.hideWorld) break; // (the mesh trial: a low-poly scene stands in for the splats)
       if (tl.k < TT * TT && !this.tileVisible(tl)) continue;
       gl.bindVertexArray(tl.vao);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, tl.n);
@@ -409,7 +472,7 @@ export class GenLook {
     // monsters, posed for this frame
     for (const m of fr.models) {
       const r = m.rig;
-      skinMonster(r, m.clip, m.time, m.x, m.y, m.z, m.dis);
+      skinMonster(r, m.clip, m.time, m.x, m.y, m.z, m.dis, m.yaw || 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, r.gpu.bf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, r.F);
       gl.bindBuffer(gl.ARRAY_BUFFER, r.gpu.bn);
@@ -421,6 +484,79 @@ export class GenLook {
       drawn += r.n;
     }
     this.drawn = drawn;
+    // low-poly meshes, into the same picture and depth as the splats
+    if (fr.meshes && fr.meshes.length) {
+      const P8 = this.P8;
+      this.setCam(P8);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform1i(P8.u('uT'), 0);
+      // Lit evenly, or, in the HD-2D trial, by a cooler evening light and lamps: those of the scene's own mesh (the one
+      // in the frame that has any), for everything drawn with it. A shader takes six, so each mesh gets the six nearest:
+      // the scene's mesh those nearest where the camera looks, a thing standing in it those nearest itself. The scene's
+      // mesh may bring an evening of its own, "amb" (a hall under rock is dimmer and bluer).
+      const src = this.hd ? fr.meshes.find(m => (m.mesh.meta.lights || []).length) : null,
+        all = src ? src.mesh.meta.lights : [],
+        amb = this.hd ? (src && src.mesh.meta.amb) || [0.8, 0.86, 1.0] : [1, 1, 1];
+      for (const m of fr.meshes) {
+        const L = new Float32Array(24),
+          LC = new Float32Array(18),
+          c = m.world ? fr.cam.focus : [m.x, m.y, m.z],
+          lamps = all.length > 6 ? all.map(v => [v, (v[0] - c[0]) ** 2 + (v[1] - c[1]) ** 2 + (v[2] - c[2]) ** 2]).sort((p, q) => p[1] - q[1]).slice(0, 6).map(p => p[0]) : all;
+        lamps.forEach((v, i) => {
+          L.set(v.slice(0, 4), i * 4);
+          LC.set(v.length > 6 ? v.slice(4, 7) : [1, 0.66, 0.3], i * 3);
+        });
+        gl.uniform3fv(P8.u('uLC[0]'), LC);
+        gl.uniform4fv(P8.u('uL[0]'), L);
+        gl.uniform3f(P8.u('uAmb'), amb[0], amb[1], amb[2]);
+        let q = this.meshGpu.get(m.mesh);
+        if (!q) {
+          const vao = gl.createVertexArray(),
+            vb = gl.createBuffer(),
+            ib = gl.createBuffer(),
+            tex = gl.createTexture(),
+            st = (m.mesh.stride || 4) * 4,
+            img = m.mesh.img || { w: 1, h: 1, data: new Uint8Array([255, 255, 255, 255]) };
+          gl.bindVertexArray(vao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+          gl.bufferData(gl.ARRAY_BUFFER, m.mesh.verts, gl.STATIC_DRAW);
+          gl.enableVertexAttribArray(0);
+          gl.enableVertexAttribArray(1);
+          if (m.mesh.q16) {
+            gl.vertexAttribPointer(0, 3, gl.SHORT, false, 16, 0);
+            gl.vertexAttribPointer(1, 3, gl.UNSIGNED_BYTE, true, 16, 6);
+            gl.enableVertexAttribArray(2);
+            gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, true, 16, 10);
+          } else {
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, st, 0);
+            gl.vertexAttribPointer(1, 3, gl.FLOAT, false, st, 12);
+            if (m.mesh.stride >= 8) {
+              gl.enableVertexAttribArray(2);
+              gl.vertexAttribPointer(2, 2, gl.FLOAT, false, st, 24);
+            }
+          }
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.mesh.tris, gl.STATIC_DRAW);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, img.w, img.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, img.data);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          this.meshGpu.set(m.mesh, (q = { vao, tex, n: m.mesh.tris.length }));
+        }
+        gl.bindVertexArray(q.vao);
+        gl.bindTexture(gl.TEXTURE_2D, q.tex);
+        gl.uniform3f(P8.u('uPos'), m.x, m.y, m.z);
+        gl.uniform1f(P8.u('uSize'), m.size * (m.mesh.q16 ? m.mesh.scale : 1));
+        gl.uniform1f(P8.u('uCK'), m.mesh.q16 ? 255 / 128 : 1);
+        gl.uniform2f(P8.u('uRot'), Math.cos(m.yaw || 0), Math.sin(m.yaw || 0));
+        gl.uniform3f(P8.u('uTint'), m.tint[0], m.tint[1], m.tint[2]);
+        gl.drawElements(gl.TRIANGLES, q.n, gl.UNSIGNED_INT, 0);
+      }
+      gl.bindTexture(gl.TEXTURE_2D, this.atlas);
+      gl.useProgram(P1.p);
+    }
     // blob shadows, then rings on the ground
     gl.bindVertexArray(this.quad);
     gl.enable(gl.BLEND);
@@ -455,11 +591,12 @@ export class GenLook {
     gl.bindTexture(gl.TEXTURE_2D, this.atlas);
     gl.uniform1i(P4.u('uT'), 0);
     const sprite = (s, sil) => {
-      const q = s.rect;
+      const q = s.rect,
+        big = S * (s.size || 1);
       gl.uniform3f(P4.u('uPos'), s.x, s.y, s.z);
       gl.uniform4f(P4.u('uRect'), q[0], q[1], q[2], q[3]);
-      gl.uniform2f(P4.u('uSize'), q[2] * S, q[3] * S);
-      gl.uniform2f(P4.u('uOff'), 0, s.offY * S);
+      gl.uniform2f(P4.u('uSize'), q[2] * big, q[3] * big);
+      gl.uniform2f(P4.u('uOff'), 0, s.offY * big);
       gl.uniform1f(P4.u('uFlip'), s.flip);
       gl.uniform3f(P4.u('uTint'), sil ? 1 : s.tint[0], sil ? 1 : s.tint[1], sil ? 1 : s.tint[2]);
       gl.uniform1f(P4.u('uBias'), (sil ? 3.3 : s.bias) / 110);
@@ -476,7 +613,7 @@ export class GenLook {
     // glows and motes
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    if (sc.n2) {
+    if (sc.n2 && (!this.hideWorld || this.hd)) {
       setWorld(P2);
       gl.bindVertexArray(sc.vao2);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, sc.n2);
@@ -511,6 +648,54 @@ export class GenLook {
         gl.enable(gl.DEPTH_TEST);
       }
     }
+    // drawn effects (engine/sheetfx.js): their thin rings flat on the ground, then each card like a sprite, its colour frame
+    // and then its light added on (the battle hands the cards over far to near)
+    if (fr.fxRings && fr.fxRings.length) {
+      gl.disable(gl.BLEND);
+      gl.depthFunc(gl.LEQUAL);
+      gl.bindVertexArray(this.quad);
+      this.setCam(P5);
+      gl.uniform1f(P5.u('uMode'), 2);
+      gl.uniform1f(P5.u('uB'), 0.02);
+      for (const r of fr.fxRings) {
+        gl.uniform1f(P5.u('uR'), r.r);
+        gl.uniform4f(P5.u('uCol'), r.col[0], r.col[1], r.col[2], 1);
+        gl.uniform3f(P5.u('uPos'), r.x, r.y, r.z);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      gl.depthFunc(gl.LESS);
+      gl.enable(gl.BLEND);
+    }
+    if (fr.sheets && fr.sheets.length) {
+      this.setCam(P4);
+      gl.bindVertexArray(this.quad);
+      gl.uniform1f(P4.u('uW'), fw);
+      gl.uniform1f(P4.u('uZoom'), this.zoom);
+      gl.uniform1f(P4.u('uSil'), 0);
+      gl.uniform1f(P4.u('uBias'), 0.66 / 110);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform1i(P4.u('uT'), 0);
+      for (const e of fr.sheets) {
+        gl.bindTexture(gl.TEXTURE_2D, e.tex);
+        gl.uniform3f(P4.u('uPos'), e.x, e.y, e.z);
+        gl.uniform2f(P4.u('uSize'), e.colour[2] * S, e.colour[3] * S);
+        gl.uniform2f(P4.u('uOff'), 0, e.offY * S);
+        gl.uniform1f(P4.u('uFlip'), e.flip ? 1 : 0);
+        for (const light of [false, true]) {
+          const q = light ? e.light : e.colour,
+            k = light ? e.gain : 1;
+          if (light) gl.enable(gl.BLEND);
+          else gl.disable(gl.BLEND);
+          gl.uniform1f(P4.u('uAdd'), light ? 1 : 0);
+          gl.uniform4f(P4.u('uRect'), q[0], q[1], q[2], q[3]);
+          gl.uniform3f(P4.u('uTint'), k, k, k);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+      }
+      gl.uniform1f(P4.u('uAdd'), 0);
+      gl.uniform1f(P4.u('uFlip'), 0);
+      gl.bindTexture(gl.TEXTURE_2D, this.atlas);
+    }
     gl.depthMask(true);
     gl.disable(gl.BLEND);
     // finish (at the picture's own size), then show it on the canvas
@@ -529,6 +714,9 @@ export class GenLook {
     gl.uniform2f(P3.u('uPx'), 1 / fw, 1 / fw);
     gl.uniform3f(P3.u('uBg'), bg[0] / 255, bg[1] / 255, bg[2] / 255);
     gl.uniform1f(P3.u('uPix'), this.pixel ? 1 : 0);
+    gl.uniform1f(P3.u('uHD'), this.hd ? fw / 1110 : 0);
+    gl.uniform2f(P3.u('uStrip'), this.viewStrip, this.viewStrip ? (this.F3[0] * Math.cos(this.ry) + this.F3[2] * Math.sin(this.ry)) * 0.012 : 0);
+    gl.uniform1f(P3.u('uCave'), this.cave ? 1 : 0); // (its blur and bloom are sized for a picture 1110 across)
     gl.uniform1f(P3.u('uDim'), dim);
     const fl = fr.flash || [0, 0, 0, 0];
     gl.uniform4f(P3.u('uFlash'), fl[0], fl[1], fl[2], fl[3]);

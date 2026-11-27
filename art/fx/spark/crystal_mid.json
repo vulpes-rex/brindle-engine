@@ -1,0 +1,407 @@
+{
+ "frames": [
+  {
+   "filename": "crystal_mid 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 1",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 2",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 3",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 4",
+   "frame": {
+    "x": 192,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 5",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 6",
+   "frame": {
+    "x": 288,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 7",
+   "frame": {
+    "x": 0,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 8",
+   "frame": {
+    "x": 48,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 9",
+   "frame": {
+    "x": 96,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 10",
+   "frame": {
+    "x": 144,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 11",
+   "frame": {
+    "x": 192,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 12",
+   "frame": {
+    "x": 240,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 13",
+   "frame": {
+    "x": 288,
+    "y": 112,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 14",
+   "frame": {
+    "x": 0,
+    "y": 224,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  },
+  {
+   "filename": "crystal_mid 15",
+   "frame": {
+    "x": 48,
+    "y": 224,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "beanfx",
+  "version": "1",
+  "image": "crystal_mid.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 336,
+   "h": 336
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "crystal_mid",
+    "from": 0,
+    "to": 15,
+    "direction": "forward"
+   }
+  ],
+  "beanfx": {
+   "name": "crystal_mid",
+   "fps": 20,
+   "loop": false,
+   "end": "remove",
+   "frames": 16,
+   "rows": 1,
+   "frameSize": [
+    48,
+    112
+   ],
+   "pivot": [
+    22,
+    101
+   ],
+   "columns": 7,
+   "blend_light": "add",
+   "light_gain": 1.0,
+   "view": "side",
+   "directions": 1,
+   "facing": "east",
+   "mirror": true,
+   "mirror_pivot": [
+    26,
+    101
+   ],
+   "glow": "medium",
+   "clarity": "clear",
+   "sheet": "crystal_mid.png",
+   "light": "crystal_mid_light.png",
+   "color": "crystal_mid_color.png"
+  }
+ }
+}

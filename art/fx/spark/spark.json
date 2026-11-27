@@ -1,0 +1,17 @@
+{
+  "about": "Maren's Spark. The sheets are beanfx exports; at is [across the picture, towards the camera] from the target, in target radii.",
+  "gain": 1.5,
+  "sheets": { "bolt": "bolt", "tall": "crystal_tall", "mid": "crystal_mid", "short": "crystal_short" },
+  "parts": [
+    { "sheet": "bolt", "at": [0, 0.5], "lift": "mid", "t": 0 },
+    { "sheet": "tall", "at": [-0.3, -1.0], "t": 0.2 },
+    { "sheet": "mid", "at": [0.55, -0.85], "t": 0.25 },
+    { "sheet": "short", "at": [-0.95, -0.5], "t": 0.3, "flip": true },
+    { "sheet": "mid", "at": [1.05, -0.05], "t": 0.3 },
+    { "sheet": "short", "at": [-1.1, 0.25], "t": 0.35, "flip": true },
+    { "sheet": "short", "at": [-0.5, 0.95], "t": 0.25, "flip": true },
+    { "sheet": "short", "at": [0.3, 1.1], "t": 0.3 },
+    { "sheet": "mid", "at": [0.95, 0.6], "t": 0.35 }
+  ],
+  "rings": [{ "t": 0.2, "dur": 0.4, "r": [0.4, 1.6], "color": "#eadcff", "to": "#7a4ee0" }]
+}

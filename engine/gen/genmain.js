@@ -208,7 +208,7 @@ else for(const q of[[0,0],[-0.3,-0.3],[0.3,-0.3],[-0.3,0.3],[0.3,0.3]]){if(Dg(X+
 B0[z*NU+x]=b;SH[z*NU+x]=Math.round(255*shadow(X,g+3.2,Z,0,1,0));}
 if(S.blockers)for(const q of S.blockers)for(let z=Math.floor(q[2]);z<=Math.floor(q[3]);z++)for(let x=Math.floor(q[0]);x<=Math.floor(q[1]);x++)B0[mu(x,z)]=1;
 for(let z=0;z<NU;z++)for(let x=0;x<NU;x++){let b=B0[z*NU+x];if(!b)for(let dz=-1;dz<=1&&!b;dz++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Z=z+dz;if(X<0||Z<0||X>=NU||Z>=NU||B0[Z*NU+X]){b=1;break;}}BL[z*NU+x]=b;}
-WK={BL,B0,SH,GH,NU,N,RS,C,G0,poi:S.poi};}
+WK={BL,B0,SH,GH,NU,N,RS,C,G0,poi:S.poi,ledges:S.ledges||[]};}
 progress('Placing splats');
 const CAP=1500000;let F=new Float32Array(CAP*6),NB=new Int8Array(CAP*4),CB=new Uint8Array(CAP*4),n=0;
 function put(x,y,z,nx,ny,nz,su,sv,rot,r,g,b,flag,sway){if(n>=CAP)return;const i=n*6,j=n*4;F[i]=x-C;F[i+1]=y-G0;F[i+2]=z-C;F[i+3]=su;F[i+4]=sv;F[i+5]=rot;NB[j]=nx*127;NB[j+1]=ny*127;NB[j+2]=nz*127;NB[j+3]=sway;CB[j]=r>255?255:r;CB[j+1]=g>255?255:g;CB[j+2]=b>255?255:b;CB[j+3]=flag;n++;}

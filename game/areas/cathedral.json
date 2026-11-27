@@ -1,0 +1,109 @@
+{
+  "name": "The Cathedral of the Answer",
+  "look": "gen",
+  "scene": "cathedral",
+  "tint": [1.04, 1.0, 0.94],
+  "spawns": { "nave": { "at": [0, -48], "face": [0, 1] } },
+  "side": {
+    "only": true,
+    "sky": "cave",
+    "roll": 0,
+    "hint": "Walk the nave with the stick. B talks and looks. The altar is at the far end.",
+    "lanes": [{ "name": "nave", "x": 0, "z": [-50, 50] }],
+    "columns": []
+  },
+  "meshes": [{ "mesh": "cathedral", "world": true }],
+  "actors": [{ "id": "verger", "sprite": "keeper", "name": "Verger", "poi": "verger", "face": [1, 0.3], "script": "verger" }],
+  "props": [
+    { "id": "out", "poi": "out", "h": 6, "r": 2, "hit": 18, "script": "out", "icon": "exit" },
+    { "id": "book", "poi": "book", "h": 4, "r": 1.4, "hit": 13, "script": "book" },
+    { "id": "altar", "poi": "altar", "h": 4.5, "r": 2.4, "hit": 20, "script": "altar" }
+  ],
+  "hints": [
+    ["offered", "The Answer is a little stronger. The south door leads back to Lastlea."],
+    ["kept", "You kept him. The Answer is still waiting. The south door leads back to Lastlea."],
+    ["feather", "It is waiting for what you carry. Go up to the altar at the far end."],
+    [null, "Walk the nave. The verger is by the door, the altar at the far end."]
+  ],
+  "scripts": {
+    "out": [
+      ["", "Beyond the south door the pilgrim road runs back down to Lastlea."],
+      { "choose": [["Go down to Lastlea", [{ "go": "brindlebrook", "at": "gate" }]], ["Stay", []]] }
+    ],
+    "verger": [
+      { "case": [
+        ["offered", [
+          ["Verger", "The bells rang themselves again at dawn. Louder than they have in years. It is so good to hear it strong."],
+          ["Verger", "Whatever you brought it, bring more."]
+        ]],
+        ["kept", [
+          ["Verger", "It was waiting for you, and you came, and it is still waiting. I do not understand."],
+          ["Verger", "I am sure you have your reasons. I am sure it knows them."]
+        ]],
+        ["feather", [
+          ["Verger", "You have someone with you. I can hear the little hum of him."],
+          ["Verger", "Go on up to the altar. It has been so tired. This will help."]
+        ]],
+        [null, [
+          ["Verger", "Welcome home. It made you this morning. The bells rang themselves, and there you were on the altar steps."],
+          ["Verger", "It has answered Lastlea for longer than the village has had a name. But it is tired now. The wells are slow. The bread is slow."],
+          ["Verger", "It asks one thing of you. Go down under the bluff, find the pure, and bring them here. They will make it strong again."]
+        ]]
+      ] }
+    ],
+    "book": [
+      ["", "The Book of the Answered lies open on the lectern, at a page marked with a paper feather."],
+      ["", "WREN, a lamp-boy of Lastlea, who leapt from the bluff to carry a warning and was borne up by the Answer. He is remembered with feathers."],
+      ["", "The page is very clean. The ink is very even."]
+    ],
+    "altar": [
+      { "case": [
+        ["offered", [
+          ["", "The seam of light is a little wider than it was. The warmth here is easy, and asks nothing of you yet."]
+        ]],
+        ["kept", [
+          ["", "The light holds very still. You have the feeling of being looked at by someone who is deciding something."],
+          ["Wren", "It knows I am here. It always knew where I was."],
+          { "choose": [
+            ["Offer Wren after all", [
+              { "set": "offered" }, { "unset": "kept" },
+              ["", "You open your hands. The feather lifts out of them, and so does he."],
+              ["Wren", "Oh. It is not home. It is—"],
+              ["", "The seam of light widens by the width of a finger. Far off, the bells begin to ring themselves."],
+              ["", "The feather drifts back down into your hands. It weighs nothing now."],
+              ["", "The Answer's favour settles on you. You are stronger for it."]
+            ]],
+            ["Leave", []]
+          ] }
+        ]],
+        ["feather", [
+          ["", "Warmth settles on your shoulders like hands. It has no words, and you understand it perfectly."],
+          ["", "It wants the child."],
+          ["Wren", "It is warm here. It was never warm on the stair."],
+          ["Wren", "Is this where I go home?"],
+          { "choose": [
+            ["Offer Wren to the Answer", [
+              { "set": "offered" },
+              ["", "You open your hands. The feather lifts out of them, and so does he."],
+              ["Wren", "Oh. It is not home. It is—"],
+              ["", "The seam of light widens by the width of a finger. Far off, the bells begin to ring themselves."],
+              ["", "The feather drifts back down into your hands. It weighs nothing now."],
+              ["", "The Answer's favour settles on you. You are stronger for it."]
+            ]],
+            ["Keep him beside you", [
+              { "set": "kept" },
+              ["", "You close your hands around the feather."],
+              ["", "The warmth does not leave. It waits, the way a held breath waits."],
+              ["Wren", "Are we going back down? I know the way. I know all of it."]
+            ]],
+            ["Not yet", []]
+          ] }
+        ]],
+        [null, [
+          ["", "A seam of light stands in the wall above the altar, as if the stone had been opened and never closed."],
+          ["", "This is where you woke this morning. It asked one thing of you: go down, and bring back the pure."]
+        ]]
+      ] }
+    ]
+  }
+}

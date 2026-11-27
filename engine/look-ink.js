@@ -377,11 +377,12 @@ export class InkLook {
     const S = this.S,
       depth = sp => -dot(c.Z, [sp.x * s - c.eye[0], sp.y * s - c.eye[1], sp.z * s - c.eye[2]]),
       sprite = (sp, sil) => {
-        const q = sp.rect;
+        const q = sp.rect,
+          big = S * (sp.size || 1);
         gl.uniform3f(pSp.u('uPos'), sp.x * s, sp.y * s, sp.z * s);
         gl.uniform4f(pSp.u('uRect'), q[0], q[1], q[2], q[3]);
-        gl.uniform2f(pSp.u('uSize'), q[2] * S, q[3] * S);
-        gl.uniform2f(pSp.u('uOff'), 0, sp.offY * S);
+        gl.uniform2f(pSp.u('uSize'), q[2] * big, q[3] * big);
+        gl.uniform2f(pSp.u('uOff'), 0, sp.offY * big);
         gl.uniform1f(pSp.u('uFlip'), sp.flip);
         gl.uniform3f(pSp.u('uTint'), sil ? 1 : sp.tint[0], sil ? 1 : sp.tint[1], sil ? 1 : sp.tint[2]);
         gl.uniform1f(pSp.u('uBias'), zb(sil ? 3.3 : sp.bias));
