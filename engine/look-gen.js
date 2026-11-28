@@ -392,7 +392,8 @@ export class GenLook {
   }
 
   // ---- one frame. fr: { t, cam: {focus, yaw, still, shake, tilt?, zoom?, persp?}, anim (Float32Array 9), models, blobs, rings,
-  //   sprites, fx?: {data, n, over} from engine/fx.js, dim?: 0..1, flash?: [r, g, b, strength] }
+  //   sprites, fx?: {data, n, over} from engine/fx.js, dim?: 0..1, flash?: [r, g, b, strength],
+  //   past?: 0..1, how far the picture is a memory, pastT: the time, for its grain }
   draw(fr) {
     const gl = this.gl,
       sc = this.scene,
@@ -718,6 +719,7 @@ export class GenLook {
     gl.uniform2f(P3.u('uStrip'), this.viewStrip, this.viewStrip ? (this.F3[0] * Math.cos(this.ry) + this.F3[2] * Math.sin(this.ry)) * 0.012 : 0);
     gl.uniform1f(P3.u('uCave'), this.cave ? 1 : 0); // (its blur and bloom are sized for a picture 1110 across)
     gl.uniform1f(P3.u('uDim'), dim);
+    gl.uniform2f(P3.u('uPast'), fr.past || 0, fr.pastT || 0);
     const fl = fr.flash || [0, 0, 0, 0];
     gl.uniform4f(P3.u('uFlash'), fl[0], fl[1], fl[2], fl[3]);
     gl.bindVertexArray(this.pv);

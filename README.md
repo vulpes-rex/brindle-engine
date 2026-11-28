@@ -195,6 +195,9 @@ A script is a list of steps:
 | `{"go": "area", "at": "spawn"}` | travel to another area |
 | `{"choose": [["Answer", script], ["Answer", script, cond]]}` | ask: the line just before is the question and stays up while the answers are offered; each answer runs its own script, and one with a condition is offered only while it holds |
 | `{"stop": true}` | end the script |
+| `{"memory": "spawn"}`, `{"memory": false}` | a memory: the picture fades into the past (warm brown, dark at the corners, a little grain), watched from that spawn of the area; the leader is not there, and of the area's people only those marked `"memory": true` are. `false` fades back to where the leader stood |
+| `{"move": "person", "to": "place" \| [x, z], "face": [dx, dz], "speed": 5, "gone": true}` | someone walks there and the script waits for them; ground they walk off they are let down to slowly, as on a rope. `face` turns them once there; `gone` takes them away once they are let down out of sight |
+| `{"wait": 1.5}` | a pause, in seconds |
 
 A condition is a flag (`"key"`), its negation (`"!key"`), `{"all": [...]}`, `{"any": [...]}` or `{"has": "item", "n": 1}`.
 The engine sets one flag itself: `moved`, the first time the leader walks.
@@ -346,6 +349,7 @@ Two things the baker needs to know about such a place:
 - Offering or keeping a soul changes the party, her strength and what Lastlea says. The Answer's favour cooling is not played yet.
 - No shops or sound.
 - A fall in the Dark Stair costs nothing but the ground lost, and there is nothing to fight down there yet.
+- A memory has no camera of its own: it is watched from a spawn, and its people walk in straight lines.
 - Only the Lastmade has a side-view set. Anyone else, and she too when facing toward or away from the camera, is drawn mid-stride in the air.
 - Items can only be used in battle: HP and MP are full again at the start of every fight, so there is nothing to mend
   in the field.

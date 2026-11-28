@@ -11,7 +11,9 @@ const CH=[
 {name:'guard',skin:[226,180,140],hair:[150,156,170],top:[150,156,170],bot:[70,74,96],boot:[50,50,60],acc:[52,96,150],style:'hat',cape:true},
 {name:'keeper',skin:[222,176,138],hair:[206,208,214],top:[40,58,96],bot:[58,60,74],boot:[46,40,40],acc:[226,184,64],style:'hat'},
 {name:'lastmade',skin:[240,202,172],hair:[58,44,54],top:[238,236,232],bot:[172,166,184],boot:[160,136,104],acc:[124,36,52],style:'short',cape:true},
-{name:'wren',skin:[208,238,246],hair:[168,214,230],top:[220,246,252],bot:[176,218,234],boot:[208,238,246],acc:[112,170,194],style:'short'}];
+{name:'wren',skin:[208,238,246],hair:[168,214,230],top:[220,246,252],bot:[176,218,234],boot:[208,238,246],acc:[112,170,194],style:'short'},
+{name:'maren-then',skin:[236,190,156],hair:[84,58,44],top:[94,68,110],bot:[230,224,206],boot:[70,52,46],acc:[232,226,206],style:'scarf'},
+{name:'wren-then',skin:[240,196,150],hair:[132,96,62],top:[140,116,92],bot:[120,98,78],boot:[240,196,150],acc:[176,138,92],style:'short'}];
 const AW=SW*FR*CH.length,KY=SH*DIRS+16,AH=KY+SW,A=new Uint8ClampedArray(AW*AH*4);
 const pk=c=>(c[0]<<16)|(c[1]<<8)|c[2],sh=(c,f)=>[Math.min(255,c[0]*f)|0,Math.min(255,c[1]*f)|0,Math.min(255,c[2]*f)|0];
 function draw(sp,dir,fr){const g=new Int32Array(SW*SH).fill(-1);

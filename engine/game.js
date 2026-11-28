@@ -183,8 +183,25 @@ export async function start(content) {
     say: (lines, cb) => ui.say(lines, cb),
     choose: (q, answers, cb) => ui.ask(q, answers, cb),
     battle: (id, cb) => g.battle.start(id, cb),
-    go: (id, at, cb) => travel(id, at, cb)
+    go: (id, at, cb) => travel(id, at, cb),
+    // a memory: faded in at a spawn of this area, or (false) out again to where the leader stood
+    memory: (at, cb) =>
+      ui.fade(
+        () => {
+          g.memory.on = !!at;
+          g.memory.k = at ? 1 : 0;
+          g.field.remember(at || null);
+        },
+        cb
+      ),
+    move: (id, to, o, cb) => g.field.moveActor(id, to, o, cb),
+    wait: (s, cb) => {
+      waits.push({ t: s, cb });
+    }
   };
+  // (a memory is not kept in a save: it is only ever the middle of a script)
+  g.memory = { on: false, k: 0 };
+  const waits = [];
 
   // run a script; scripts can nest (a battle's closing script runs inside the one that started the battle)
   g.run = (script, done) => {
@@ -204,6 +221,8 @@ export async function start(content) {
   // ---- areas
   function enterArea(rt, pos, yaw) {
     g.area = rt;
+    g.memory.on = false;
+    g.memory.k = 0;
     g.mode = 'field';
     g.show(rt);
     g.field.enter(rt, pos);
@@ -248,6 +267,12 @@ export async function start(content) {
   function step(dt) {
     g.t += dt;
     ui.type(dt);
+    // (pauses a script asked for)
+    for (let i = waits.length - 1; i >= 0; i--)
+      if ((waits[i].t -= dt) <= 0) {
+        const w = waits.splice(i, 1)[0];
+        w.cb();
+      }
     stepAnims(dt);
     if (g.mode === 'battle') g.battle.update(dt);
     else if (!g.menu.open) {

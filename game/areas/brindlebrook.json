@@ -48,8 +48,8 @@
     { "group": 3, "flag": "open", "to": -1.9, "rate": 2.2 }
   ],
   "hints": [
-    ["offered", "The Answer has what it asked for. In Lastlea the paper feathers have come down."],
-    ["kept", "Wren walks with you. The Answer is waiting. The stair goes deeper than this build does."],
+    ["offered", "The Answer has what it asked for, and Lastlea is thriving."],
+    ["kept", "Wren walks with you. Lastlea has gone cold. The Answer is waiting."],
     ["feather", "Wren's echo is with you. The Answer waits in the cathedral, down the road from the south gate."],
     ["won", "The hall is quiet. The door under the bluff now leads on down, to the Dark Stair."],
     ["open", "Tap the open door to go down and fight."],
@@ -61,9 +61,18 @@
   "scripts": {
     "guard": [
       { "case": [
-        ["offered", [["Bram", "Feathers down off every door this morning. Wind, I expect."], ["Bram", "There was no wind."]]],
-        ["kept", [["Bram", "Something small ran past my gate last night, laughing. I did not look. I have a rule about not looking."]]],
-        ["won", [["Bram", "Quiet under the bluff, they say. I never doubted the Answer would send someone."], ["Bram", "Well. Once. I was young."]]],
+        ["offered", [
+          ["Bram", "My knee stopped aching this morning. Twenty years it ached. I don't ask questions of a gift."],
+          ["Bram", "Feathers came down off every door, too. Wind, I expect. There was no wind."]
+        ]],
+        ["kept", [
+          ["Bram", "The hearths would not take last night. The whole village slept cold. First time in my life."],
+          ["Bram", "Something small ran past my gate, laughing. I did not look. I have a rule about not looking."]
+        ]],
+        ["won", [
+          ["Bram", "Quiet under the bluff, they say. I never doubted the Answer would send someone."],
+          ["Bram", "Well. Once. I was young."]
+        ]],
         ["wisp", [
           ["Bram", "Welcome to Lastlea. Quiet place. The Answer has always seen to that."],
           ["Bram", "If you hear humming up by the bluff at night, that is the stair door. Shut since little Wren's day."]
@@ -77,22 +86,40 @@
     ],
     "elder": [
       { "case": [
-        ["offered", [["Elder Maren", "The feathers came down off every door in the night. Nobody took them down."], ["Elder Maren", "I expect it is a sign, and a good one. We will pin up new ones."]]],
-        ["kept", [["Elder Maren", "Pip says she heard a boy singing by the well this morning."], ["Elder Maren", "There is no boy that age in Lastlea. There has not been for a long time."]]],
-        ["feather", [["Elder Maren", "You have a look about you. Did you find his shrine, down there?"], ["Elder Maren", "They say he was smiling when he leapt. I have always liked that part."]]],
+        ["offered", [
+          ["Elder Maren", "The bells rang themselves at dawn, and the well runs sweet for the first time in years. Bless you, child."],
+          ["Elder Maren", "The feathers all came down off the doors in the night. We will pin up new ones for Wrenfeast. He would have liked that."]
+        ]],
+        ["kept", [
+          ["Elder Maren", "The well has gone slow, and the bread will not rise. The Answer is quiet with us. I do not know what we have done."],
+          ["Elder Maren", "And Pip says she heard a boy singing by the well. There is no boy that age in Lastlea. There has not been for a long time."]
+        ]],
+        ["stair", [
+          ["Elder Maren", "You are back! Did you see his lamp niches, down there? He kept every one of them filled, our Wren."],
+          ["Elder Maren", "He flew, you know. I was there. The Answer bore him up like a leaf."]
+        ]],
+        ["feather", [
+          ["Elder Maren", "You have a look about you. Did you find his shrine, down there?"],
+          ["Elder Maren", "They say he was smiling when he leapt. I have always liked that part."]
+        ]],
         ["won", [
           ["Elder Maren", "Quiet under the bluff again. You have done us a kindness."],
           ["Elder Maren", "Do you know our Wren? A lamp-boy, no higher than my hip. The night the bluff cracked he leapt from the top to warn the village, and the Answer bore him up like a leaf."],
           ["Elder Maren", "We pin up paper feathers for him every year. It is nearly Wrenfeast now."]
         ]],
         ["open", [["Elder Maren", "The door is open. The Answer go with you. It always has."]]],
-        ["key", [["Elder Maren", "You found the key! Then north past the well and west, under the bluff. Wren keep you."]]],
+        ["key", [
+          ["Elder Maren", "You found the key! Then north past the well and west, under the bluff. Wren keep you."]
+        ]],
         [null, [
           ["Elder Maren", "Oh! One of the Answer's own, here in Lastlea. Forgive an old woman for staring. We prayed, and here you are."],
           ["Elder Maren", "You will want the stair under the bluff. It has been shut since little Wren's day, and lately it hums."],
           ["Elder Maren", "The miller keeps its brass key in a chest beyond the pond. Would you fetch it? My knees are not what they were."],
           { "choose": [
-            ["I'll find the key.", [{ "set": "asked" }, ["Elder Maren", "Bless you. Look beyond the pond, where the reeds grow thick."]]],
+            ["I'll find the key.", [
+              { "set": "asked" },
+              ["Elder Maren", "Bless you. Look beyond the pond, where the reeds grow thick."]
+            ]],
             ["Not just now.", [["Elder Maren", "Of course. I will be by the well when you change your mind."]]]
           ] }
         ]]
@@ -100,7 +127,14 @@
     ],
     "merchant": [
       { "case": [
-        ["offered", [["Odo", "All my feathers fell off the string overnight. Every one, face down."], ["Odo", "I am not a superstitious man. I am simply not picking them up yet."]]],
+        ["offered", [
+          ["Odo", "The bells rang themselves, and now all Lastlea wants a feather. I sold out by noon."],
+          ["Odo", "Odd thing. Every one I hung last night was lying face down this morning. I hung new ones."]
+        ]],
+        ["kept", [
+          ["Odo", "Nobody is buying feathers. They say the Answer has turned its face from us."],
+          ["Odo", "I say it is the weather. I have said it four times today."]
+        ]],
         [null, [
           ["Odo", "Paper feathers! One prayer each. No, I jest, take one. It is nearly Wrenfeast."],
           ["Odo", "The old ledges behind my stall go up to the mill, and to Wren's Leap, if your knees are younger than mine."]
@@ -109,10 +143,19 @@
     ],
     "girl": [
       { "case": [
-        ["offered", [["Pip", "My feather fell down. I did not cry."]]],
-        ["kept", [["Pip", "There is a boy who hums by the well. He would not say his name. He knew mine."]]],
-        ["key", [["Pip", "You found the shiny thing! I knew it was there."], ["Pip", "I made a feather for Wrenfeast. Mine has the most glue."]]],
-        [null, [["Pip", "There is something shiny in the reeds past the pond. I saw it glint!"], ["Pip", "Are you an angel? Elder Maren says not to ask."]]]
+        ["offered", [["Pip", "I asked Elder Maren if Wren is happy now. She said to go and play."]]],
+        ["kept", [
+          ["Pip", "Everyone is cold. There is a boy who hums by the well, and he is not cold."],
+          ["Pip", "He would not say his name. He knew mine."]
+        ]],
+        ["key", [
+          ["Pip", "You found the shiny thing! I knew it was there."],
+          ["Pip", "I made a feather for Wrenfeast. Mine has the most glue."]
+        ]],
+        [null, [
+          ["Pip", "There is something shiny in the reeds past the pond. I saw it glint!"],
+          ["Pip", "Are you an angel? Elder Maren says not to ask."]
+        ]]
       ] }
     ],
     "mill": [

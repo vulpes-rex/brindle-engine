@@ -74,7 +74,10 @@ export async function checkContent(root) {
     if (a.side && a.side.kill !== undefined && typeof a.side.kill !== 'number') out.push(at + ': "side.kill" is a height');
     if (a.side && a.side.ceil !== undefined && typeof a.side.ceil !== 'number') out.push(at + ': "side.ceil" is a height');
     if (a.fight && !(Array.isArray(a.fight.from) && a.fight.from.length === 2 && Math.hypot(a.fight.from[0], a.fight.from[1]) > 0)) out.push(at + ': "fight.from" is the way from a fight to the camera, [x, z]');
-    for (const name in scripts) out.push(...checkScript(scripts[name], at + ' script "' + name + '"', known));
+    // (people seen only in a memory: a script shows them, with {"memory": "spawn"})
+    for (const who of a.actors || []) if (who.memory !== undefined && who.memory !== true) out.push(at + ': "' + who.id + '": "memory" is true, for someone seen only in a memory');
+    const here = { spawns: Object.keys(a.spawns || {}), actors: (a.actors || []).map(w => w.id), pois: null };
+    for (const name in scripts) out.push(...checkScript(scripts[name], at + ' script "' + name + '"', Object.assign({ here }, known)));
   }
   for (const id in battles) {
     const b = battles[id],

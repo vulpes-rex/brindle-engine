@@ -89,7 +89,7 @@ export const PV=`#version 300 es
 out vec2 vUV;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUV=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
 export const PF=`#version 300 es
 precision highp float;
-in vec2 vUV;uniform sampler2D uC;uniform sampler2D uD;uniform vec2 uPx;uniform vec3 uBg;uniform float uPix;uniform float uDim;uniform vec4 uFlash;uniform float uHD;uniform vec2 uStrip;uniform float uCave;out vec4 o;
+in vec2 vUV;uniform sampler2D uC;uniform sampler2D uD;uniform vec2 uPx;uniform vec3 uBg;uniform float uPix;uniform float uDim;uniform vec4 uFlash;uniform float uHD;uniform vec2 uStrip;uniform float uCave;uniform vec2 uPast;out vec4 o;
 // the strip trial's backdrop: an evening sky and two ranges of hills that slide by at different speeds as the view moves
 float hill(float x){return sin(x)*0.5+sin(x*2.3+1.7)*0.28+sin(x*5.1+0.4)*0.12+sin(x*11.0+2.0)*0.05;}
 vec3 backdrop(vec2 uv){
@@ -125,6 +125,11 @@ col=mix(col,acc/wsum,clamp(blur,0.0,1.0));col+=glow/16.0*1.6;
 float lum=dot(col,vec3(0.3,0.59,0.11));col=mix(col*vec3(0.92,0.97,1.1),col*vec3(1.1,1.02,0.9),smoothstep(0.25,0.8,lum));
 col=(col-0.5)*1.1+0.5;col*=1.06-0.75*dot(q,q);}
 col+=uFlash.rgb*uFlash.a;
+// a memory: the colour drained to a warm brown, the corners dark, a faint grain that will not keep still
+if(uPast.x>0.0){float l=dot(col,vec3(0.3,0.59,0.11));l=pow(l,0.9)*1.08;vec3 sp=vec3(l*1.08+0.05,l*0.93+0.03,l*0.70+0.012);
+float v=smoothstep(0.16,0.66,length(q*vec2(1.0,1.15)));sp*=1.0-0.78*v;
+float gr=fract(sin(dot(floor(gl_FragCoord.xy/2.0)+floor(uPast.y*14.0)*vec2(17.0,31.0),vec2(12.9898,78.233)))*43758.5453)-0.5;sp+=gr*0.045;
+col=mix(col,sp,uPast.x);}
 if(uPix>0.5){ivec2 ip=ivec2(gl_FragCoord.xy)&3;col=floor(col*31.0+(B[ip.y*4+ip.x]+0.5)/16.0)/31.0;}
 o=vec4(col,1.0);}`;
 // Battle effects (engine/fx.js): instanced quads, added onto the picture. Each has two points (a streak runs from A to B;

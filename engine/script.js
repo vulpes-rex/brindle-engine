@@ -11,10 +11,17 @@
 //                                              ask: the line just before is the question and stays up; each answer runs its
 //                                              own script (one with a condition is offered only while it holds)
 //   {"stop": true}                             end the whole script here
+//   {"memory": "spawn"}                        a memory: the picture fades into the past at this spawn of the area. The
+//                                              leader is not there; people marked "memory" in the area are, and no one else
+//   {"memory": false}                          back from it, to where the leader stood
+//   {"move": "person", "to": "poi" | [x, z], "face": [dx, dz], "speed": 5, "gone": true}
+//                                              someone walks there (and then faces `face`; or, `gone`, is gone); the script
+//                                              waits until they arrive. Ground they walk off they are lowered down to.
+//   {"wait": 1.5}                              a pause, in seconds
 //
 // A condition is a flag name ("key"), its negation ("!key"), {"all": [...]}, {"any": [...]} or {"has": "item", "n": 1}.
 //
-// The runner knows nothing about the game: a host supplies flag/set/has/give/say/choose/battle/go.
+// The runner knows nothing about the game: a host supplies flag/set/has/give/say/choose/battle/go/memory/move/wait.
 
 export function test(cond, host) {
   if (cond == null) return true;
@@ -76,6 +83,15 @@ export function runScript(script, host, done) {
       } else if (st.go) {
         host.go(st.go, st.at, next);
         return;
+      } else if (st.memory !== undefined) {
+        host.memory(st.memory, next);
+        return;
+      } else if (st.move) {
+        host.move(st.move, st.to, { face: st.face, speed: st.speed, gone: !!st.gone }, next);
+        return;
+      } else if (st.wait !== undefined) {
+        host.wait(st.wait, next);
+        return;
       } else if (st.stop) stack.length = 0;
       else throw new Error('Unknown script step: ' + JSON.stringify(st));
     }
@@ -128,6 +144,17 @@ export function checkScript(script, where, known) {
         const sp = known.spawns && known.spawns[st.go];
         if (!sp) out.push(here + ': unknown area "' + st.go + '"');
         else if (!sp.includes(st.at)) out.push(here + ': area "' + st.go + '" has no spawn "' + st.at + '"');
+      } else if (st.memory !== undefined) {
+        if (st.memory !== false && typeof st.memory !== 'string') out.push(here + ': memory is a spawn of this area, or false');
+        else if (st.memory && known.here && !known.here.spawns.includes(st.memory)) out.push(here + ': this area has no spawn "' + st.memory + '"');
+      } else if (st.move) {
+        if (known.here && !known.here.actors.includes(st.move)) out.push(here + ': this area has no one called "' + st.move + '"');
+        const to = st.to;
+        if (typeof to === 'string') {
+          if (known.here && known.here.pois && !known.here.pois.includes(to)) out.push(here + ': this area has no place "' + to + '"');
+        } else if (!Array.isArray(to) || to.length !== 2 || !to.every(v => typeof v === 'number')) out.push(here + ': move needs "to": a place or [x, z]');
+      } else if (st.wait !== undefined) {
+        if (typeof st.wait !== 'number' || st.wait < 0) out.push(here + ': wait is a number of seconds');
       } else out.push(here + ': unknown step ' + JSON.stringify(st));
     });
   };

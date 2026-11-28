@@ -16,6 +16,10 @@ export function facing(hx, hz, ax) {
 }
 
 const SPEED = 13, // game units a second
+  WALK = 5, // how fast someone walks when a script sends them
+  LOWER = 2.6, // how fast someone a script walks off an edge is let down
+  GONE = 9, // how far down someone let down is out of sight
+  MEMORY_DROP = 6, // how much lower the camera looks during a memory
   LIFT = 4.2, // the camera looks this far above the leader's feet
   TURN = 1.3, // side-on, a key takes a crossing this near along the line one is on
   ACT = 9.5, // the act button uses what is within this of the leader
@@ -43,6 +47,7 @@ export function createField(g) {
     // where there is jumping: the area's own clock (its ledges move by it), which mesh is drawn for a ledge that moves and
     // for one that gives way, the last firm ground stood on, and, after a fall out of the world, how long ago that was
     clock = 0,
+    back = null, // (during a memory, where the leader stood)
     parts = {},
     safe = null,
     lost = -1,
@@ -112,10 +117,10 @@ export function createField(g) {
         l = Math.hypot(f[0], f[1]) || 1,
         ci = SP.names.indexOf(a.sprite);
       if (ci < 0) throw new Error(rt.id + ': no sprite called "' + a.sprite + '"');
-      const n = { id: a.id, ci, name: a.name, x: p[0], z: p[1], y: groundAt(p[0], p[1]), fx: f[0] / l, fz: f[1] / l, wander: !!a.wander, wait: 2, hx0: p[0], hz0: p[1], script: a.script, talk: false, moving: false, dist: 0, tx: null, tz: null };
+      const n = { id: a.id, ci, name: a.name, x: p[0], z: p[1], y: groundAt(p[0], p[1]), fx: f[0] / l, fz: f[1] / l, f0: [f[0] / l, f[1] / l], wander: !!a.wander, wait: 2, hx0: p[0], hz0: p[1], script: a.script, talk: false, moving: false, dist: 0, tx: null, tz: null, memory: !!a.memory, goal: null, gone: false };
       actors.push(n);
-      // (someone who stays put is in the way)
-      if (!n.wander)
+      // (someone who stays put is in the way; someone in a memory is not there to be in it)
+      if (!n.wander && !n.memory)
         for (let dz = -1; dz <= 1; dz++)
           for (let dx = -1; dx <= 1; dx++) {
             const j = nav.cell(n.x + dx, n.z + dz);
@@ -188,7 +193,8 @@ export function createField(g) {
     let y = hero.y;
     if (plat && plat.kill > -1e8) y = Math.max(y, plat.kill + 7);
     if (sd.ceil !== undefined && laned()) y = Math.min(y, sd.ceil);
-    return y + LIFT;
+    // (a memory is watched from lower down, so that its people stand clear of the words at the foot of the picture)
+    return y + LIFT - (remembering() ? MEMORY_DROP : 0);
   };
 
   // the ordinary way onto the lines from somewhere off them (as when the view has just been changed)
@@ -266,7 +272,9 @@ export function createField(g) {
     if (best && walkTo(best[0], best[1], () => interact(th))) mark = null;
   }
 
-  const shown = th => th.name !== undefined || th.show === undefined || test(th.show, g.host);
+  // (in a memory only the people marked "memory" are there, and nothing can be used; out of one they are not there)
+  const remembering = () => !!(g.memory && g.memory.on),
+    shown = th => (th.name !== undefined ? !!th.memory === remembering() && !th.gone : !remembering() && (th.show === undefined || test(th.show, g.host)));
 
   // Over rolling ground (the side view) what is far sinks behind the ground nearer the eye: is this point out of sight
   // behind it? Such a thing cannot be tapped, though a tap may land where it would draw.
@@ -291,6 +299,7 @@ export function createField(g) {
     let best = null,
       bz = 1e9;
     for (const th of actors.concat(props)) {
+      if (!shown(th)) continue;
       // (through a lens what is far is drawn small, and is as small to tap)
       const k = g.look.scaleAt ? g.look.scaleAt(th.x, th.y, th.z) : 1;
       let hit;
@@ -624,6 +633,41 @@ export function createField(g) {
   }
 
   function stepActor(n, dt) {
+    // (a walk a script asked for: straight there, and then the script goes on; ground walked off is lowered down to, as
+    // on a rope)
+    if (n.goal) {
+      const q = n.goal,
+        dx = q.x - n.x,
+        dz = q.z - n.z,
+        d = Math.hypot(dx, dz),
+        sp = q.speed * dt;
+      if (d <= sp) {
+        n.x = q.x;
+        n.z = q.z;
+        n.moving = false;
+      } else {
+        n.fx = dx / d;
+        n.fz = dz / d;
+        n.x += (dx / d) * sp;
+        n.z += (dz / d) * sp;
+        n.dist += sp;
+        n.moving = true;
+      }
+      const gy = nav.gh(n.x, n.z);
+      if (gy > -900) n.y = gy >= n.y ? gy : Math.max(gy, n.y - LOWER * dt);
+      // (there, and on the ground; or, someone who is to be gone, let down far enough to be out of sight)
+      if ((!n.moving && Math.abs(n.y - (gy > -900 ? gy : n.y)) < 0.01) || (q.gone && n.y < q.y0 - GONE)) {
+        n.goal = null;
+        if (q.face) {
+          const l = Math.hypot(q.face[0], q.face[1]) || 1;
+          n.fx = q.face[0] / l;
+          n.fz = q.face[1] / l;
+        }
+        if (q.gone) n.gone = true;
+        if (q.cb) q.cb();
+      }
+      return;
+    }
     if (!n.wander || n.talk || g.busy) return;
     if (n.tx != null) {
       const dx = n.tx - n.x,
@@ -790,10 +834,10 @@ export function createField(g) {
     const ax = g.look.axes(g.cam.yaw),
       body = (ci, moving, dist, hx, hz) => ({ rect: SP.frame(ci, facing(hx, hz, ax), moving, dist), flip: 0, size: SP.size(ci) }),
       // (fallen out of the world the leader is not there; just set back, they flicker)
-      here = !fight && lost < 0 && !(blink > 0 && Math.floor(blink * 12) % 2);
+      here = !fight && lost < 0 && !remembering() && !(blink > 0 && Math.floor(blink * 12) % 2);
     if (lost >= 0) fr.dim = 0.5 * Math.sin((Math.PI * lost) / LOST);
-    if (!fight && lost < 0) fr.blobs.push({ x: hero.x, y: (jumps() ? plat.floor(hero.x, hero.z, hero.y + 0.01) : hero.y) + 0.25, z: hero.z, r: hero.air ? 1 : 1.3 });
-    for (const n of actors) fr.blobs.push({ x: n.x, y: n.y + 0.25, z: n.z, r: 1.3 });
+    if (here) fr.blobs.push({ x: hero.x, y: (jumps() ? plat.floor(hero.x, hero.z, hero.y + 0.01) : hero.y) + 0.25, z: hero.z, r: hero.air ? 1 : 1.3 });
+    for (const n of actors) if (shown(n)) fr.blobs.push({ x: n.x, y: n.y + 0.25, z: n.z, r: 1.3 });
     for (const n of foes) {
       const rig = g.rigs[n.m.rig];
       if (!rig || n.inFight || !foeShown(n)) continue;
@@ -820,7 +864,12 @@ export function createField(g) {
     }
     // (a leader with a "halo" in heroes.json wears a thin ring of light over their head)
     if (here && g.hero(g.party()[0]).halo) fr.rings.push({ x: hero.x, y: hero.y + HALO, z: hero.z, r: 0.95, col: [1, 0.9, 0.56] });
-    for (const n of actors) fr.sprites.push(Object.assign(body(n.ci, n.moving, n.dist, n.fx, n.fz), { x: n.x, y: n.y, z: n.z, tint: g.tintAt(n.x, n.z), offY: SP.offY, bias: 0.66 }));
+    for (const n of actors) if (shown(n)) fr.sprites.push(Object.assign(body(n.ci, n.moving, n.dist, n.fx, n.fz), { x: n.x, y: n.y, z: n.z, tint: g.tintAt(n.x, n.z), offY: SP.offY, bias: 0.66 }));
+    // (a memory is drawn faded into the past: engine/look-gen.js)
+    if (g.memory && g.memory.k > 0) {
+      fr.past = g.memory.k;
+      fr.pastT = g.t;
+    }
     if (!g.busy && !fight) {
       // the little bobbing mark over what can be used nearby; with the stick and buttons on the picture, a ring at the
       // feet of what the act button would use
@@ -924,6 +973,32 @@ export function createField(g) {
     },
     setMark(x, z) {
       mark = [x, z, g.t + 99];
+    },
+    // A memory (engine/script.js): `at`, a spawn of this area, is where it is watched from: the leader (not drawn) is put
+    // there, the people of the memory stand in their places, and the camera is there at once. Called again with nothing,
+    // the leader is back where they stood. (Called while the picture is faded out.)
+    remember(at) {
+      if (at) {
+        back = { x: hero.x, z: hero.z, y: hero.y, hx: hero.hx, hz: hero.hz };
+        const sp = (rt.def.spawns || {})[at];
+        if (!sp) throw new Error(rt.id + ': no spawn called "' + at + '"');
+        const p = place(sp);
+        Object.assign(hero, { x: p[0], z: p[1], y: nav.gh(p[0], p[1]), path: null, pi: 0, cb: null, moving: false, vy: 0, air: false, on: -1 });
+        for (const n of actors)
+          if (n.memory) Object.assign(n, { x: n.hx0, z: n.hz0, y: nav.gh(n.hx0, n.hz0), fx: n.f0[0], fz: n.f0[1], goal: null, gone: false, moving: false, dist: 0 });
+      } else if (back) {
+        Object.assign(hero, back, { path: null, pi: 0, cb: null, moving: false, vy: 0, air: false, on: -1 });
+        back = null;
+      }
+      mark = null;
+      g.cam.focus = [hero.x, eye(), hero.z];
+    },
+    // someone walks to `to` (a place, or [x, z] in game units), then faces `o.face`, or is gone (`o.gone`); then `cb`
+    moveActor(id, to, o, cb) {
+      const n = actors.find(a => a.id === id);
+      if (!n) throw new Error(rt.id + ': no one called "' + id + '"');
+      const p = typeof to === 'string' ? place({ poi: to }) : [to[0], to[1]];
+      n.goal = { x: p[0], z: p[1], speed: o.speed || WALK, face: o.face, gone: o.gone, y0: n.y, cb };
     },
     // after a battle fought in place: the leader stands at (x, z), facing `face` if given; a foe that won goes home and
     // leaves them be for a while

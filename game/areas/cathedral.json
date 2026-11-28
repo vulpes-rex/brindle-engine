@@ -37,7 +37,7 @@
           ["Verger", "Whatever you brought it, bring more."]
         ]],
         ["kept", [
-          ["Verger", "It was waiting for you, and you came, and it is still waiting. I do not understand."],
+          ["Verger", "The wells are slow again. The bread is slow. It was waiting for you, and you came, and it is still waiting."],
           ["Verger", "I am sure you have your reasons. I am sure it knows them."]
         ]],
         ["feather", [
@@ -66,7 +66,9 @@
           ["Wren", "It knows I am here. It always knew where I was."],
           { "choose": [
             ["Offer Wren after all", [
-              { "set": "offered" }, { "unset": "kept" },
+              { "set": "offered" },
+              { "unset": "kept" },
+              ["", "You hear yourself say it the way they did: \"Further, Wren.\""],
               ["", "You open your hands. The feather lifts out of them, and so does he."],
               ["Wren", "Oh. It is not home. It is—"],
               ["", "The seam of light widens by the width of a finger. Far off, the bells begin to ring themselves."],
@@ -84,6 +86,7 @@
           { "choose": [
             ["Offer Wren to the Answer", [
               { "set": "offered" },
+              ["", "You hear yourself say it the way they did: \"Further, Wren.\""],
               ["", "You open your hands. The feather lifts out of them, and so does he."],
               ["Wren", "Oh. It is not home. It is—"],
               ["", "The seam of light widens by the width of a finger. Far off, the bells begin to ring themselves."],
@@ -94,6 +97,7 @@
               { "set": "kept" },
               ["", "You close your hands around the feather."],
               ["", "The warmth does not leave. It waits, the way a held breath waits."],
+              ["", "Far down the hill, a bell that had begun to ring stops."],
               ["Wren", "Are we going back down? I know the way. I know all of it."]
             ]],
             ["Not yet", []]
