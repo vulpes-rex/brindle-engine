@@ -1,21 +1,46 @@
 {
-  "name": "Brindlebrook",
+  "name": "Lastlea",
   "look": "gen",
   "scene": "brindlebrook",
   "spawns": {
     "start": { "poi": "start", "face": [0, 1] },
-    "gate": { "at": [-0.5, -52], "face": [0, 1] }
+    "gate": { "at": [0, -52], "face": [0, 1] },
+    "door": { "at": [-17, 6.5], "face": [1, 0] }
   },
+  "side": {
+    "hint": "Push the stick to walk, A to jump, B to talk. Push it up or down at an arrow to cross to another lane.",
+    "jump": true,
+    "lanes": [
+      { "name": "bluff top", "x": -43, "z": [-20, 36], "ledge": true },
+      { "name": "bluff foot", "x": -35, "z": [-30.5, -17], "ledge": true },
+      { "name": "market row", "x": -13, "z": [-40.5, 6.5] },
+      { "name": "road", "x": 0, "z": [-55, 29.5] },
+      { "name": "pond side", "x": 11.5, "z": [-16.5, 6.5] }
+    ],
+    "columns": [
+      { "name": "south", "z": -40.5, "x": [-13, 26.5] },
+      { "name": "back of the market", "z": -30.5, "x": [-35, -13], "ledge": true },
+      { "name": "deck", "z": -20, "x": [-43, -35], "ledge": true },
+      { "name": "pond", "z": -16.5, "x": [0, 11.5] },
+      { "name": "west house", "z": -6, "x": [-13, 0] },
+      { "name": "door", "z": 6.5, "x": [-31.5, 11.5] },
+      { "name": "blue house", "z": 24.5, "x": [-20.5, 0] }
+    ]
+  },
+  "meshes": [{ "mesh": "square", "world": true }],
+  "fight": { "from": [1, 0] },
+  "foes": [{ "id": "doorwisp", "type": "wisp", "at": [-18.5, 6.5], "roam": 2.5, "sight": 11, "battle": "doorwisp", "show": "!wisp" }],
   "actors": [
-    { "id": "elder", "sprite": "elder", "name": "Elder Maren", "poi": "elder", "face": [-0.4, -1], "script": "elder" },
-    { "id": "merchant", "sprite": "merchant", "name": "Odo", "poi": "merchant", "face": [0, -1], "script": "merchant" },
-    { "id": "girl", "sprite": "girl", "name": "Pip", "poi": "girl", "face": [0, -1], "wander": true, "script": "girl" },
+    { "id": "elder", "sprite": "elder", "name": "Elder Maren", "poi": "elder", "face": [1, -0.3], "script": "elder" },
+    { "id": "merchant", "sprite": "merchant", "name": "Odo", "poi": "merchant", "face": [1, 0], "script": "merchant" },
+    { "id": "girl", "sprite": "girl", "name": "Pip", "poi": "girl", "face": [1, -0.2], "wander": true, "script": "girl" },
     { "id": "guard", "sprite": "guard", "name": "Bram", "poi": "guard", "face": [1, 0.2], "script": "guard" }
   ],
   "props": [
     { "id": "chest", "poi": "chest", "dy": -1, "h": 1.6, "r": 2.4, "hit": 13, "script": "chest", "show": "!key" },
-    { "id": "door", "poi": "door", "dy": -4, "h": 4.5, "r": 3.6, "hit": 24, "script": "door", "show": "!won" },
-    { "id": "road", "at": [-0.5, -56.5], "h": 3, "r": 1.5, "hit": 16, "script": "road", "icon": "exit" }
+    { "id": "door", "poi": "door", "dy": -4, "h": 4.5, "r": 3.6, "hit": 24, "script": "door" },
+    { "id": "road", "at": [0, -56.5], "h": 3, "r": 1.5, "hit": 16, "script": "road", "icon": "exit" },
+    { "id": "mill", "poi": "milldoor", "h": 5, "r": 1.2, "hit": 14, "script": "mill" }
   ],
   "anims": [
     { "group": 1, "spin": 0.5 },
@@ -23,46 +48,120 @@
     { "group": 3, "flag": "open", "to": -1.9, "rate": 2.2 }
   ],
   "hints": [
-    ["won", "You cleared the first battle. The shore road by the south gate still leads out to Lighthouse rock."],
+    ["offered", "The Answer has what it asked for, and Lastlea is thriving."],
+    ["kept", "Wren walks with you. Lastlea has gone cold. The Answer is waiting."],
+    ["feather", "Wren's echo is with you. The Answer waits in the cathedral, down the road from the south gate."],
+    ["won", "The hall is quiet. The door under the bluff now leads on down, to the Dark Stair."],
     ["open", "Tap the open door to go down and fight."],
-    ["key", "Take the brass key to the door under the bluff: up the steps, then east."],
+    ["key", "Take the brass key to the door under the bluff: north past the well, then west."],
     ["asked", "Find the chest beyond the pond."],
-    ["moved", "Talk to the elder by the well. The road out of the south gate goes to Lighthouse rock."],
-    [null, "Tap the ground to walk. Tap people to talk. Swipe or use Turn to rotate the view."]
+    ["moved", "Talk to the elder by the well. The road out of the south gate leads to the cathedral."],
+    [null, "You are the Lastmade, sent by the Answer. Tap the ground to walk. Tap people to talk."]
   ],
   "scripts": {
     "guard": [
       { "case": [
-        ["won", [["Bram", "Back at my gate, where nothing has teeth."]]],
+        ["offered", [
+          ["Bram", "My knee stopped aching this morning. Twenty years it ached. I don't ask questions of a gift."],
+          ["Bram", "Feathers came down off every door, too. Wind, I expect. There was no wind."]
+        ]],
+        ["kept", [
+          ["Bram", "The hearths would not take last night. The whole village slept cold. First time in my life."],
+          ["Bram", "Something small ran past my gate, laughing. I did not look. I have a rule about not looking."]
+        ]],
+        ["won", [
+          ["Bram", "Quiet under the bluff, they say. I never doubted the Answer would send someone."],
+          ["Bram", "Well. Once. I was young."]
+        ]],
+        ["wisp", [
+          ["Bram", "Welcome to Lastlea. Quiet place. The Answer has always seen to that."],
+          ["Bram", "If you hear humming up by the bluff at night, that is the stair door. Shut since little Wren's day."]
+        ]],
         [null, [
-          ["Bram", "Welcome to Brindlebrook. Quiet place, mostly."],
-          ["Bram", "If you hear humming up by the bluff at night, that is the old door. Nobody has opened it in my lifetime."]
+          ["Bram", "One of the Answer's own, walking in at my gate! Welcome to Lastlea. Quiet place. The Answer has always seen to that."],
+          ["Bram", "If you hear humming up by the bluff at night, that is the stair door. Shut since little Wren's day."],
+          ["Bram", "And mind the pale thing drifting about north of the west house. It came out with the humming."]
         ]]
       ] }
     ],
     "elder": [
       { "case": [
-        ["won", [["Elder Maren", "It has gone quiet under the bluff. For now."]]],
-        ["open", [["Elder Maren", "The door is open. When you are ready, we go down together."]]],
-        ["key", [["Elder Maren", "You found the key? Then up the steps and east, under the bluff. Mind yourself."]]],
+        ["offered", [
+          ["Elder Maren", "The bells rang themselves at dawn, and the well runs sweet for the first time in years. Bless you, child."],
+          ["Elder Maren", "The feathers all came down off the doors in the night. We will pin up new ones for Wrenfeast. He would have liked that."]
+        ]],
+        ["kept", [
+          ["Elder Maren", "The well has gone slow, and the bread will not rise. The Answer is quiet with us. I do not know what we have done."],
+          ["Elder Maren", "And Pip says she heard a boy singing by the well. There is no boy that age in Lastlea. There has not been for a long time."]
+        ]],
+        ["stair", [
+          ["Elder Maren", "You are back! Did you see his lamp niches, down there? He kept every one of them filled, our Wren."],
+          ["Elder Maren", "He flew, you know. I was there. The Answer bore him up like a leaf."]
+        ]],
+        ["feather", [
+          ["Elder Maren", "You have a look about you. Did you find his shrine, down there?"],
+          ["Elder Maren", "They say he was smiling when he leapt. I have always liked that part."]
+        ]],
+        ["won", [
+          ["Elder Maren", "Quiet under the bluff again. You have done us a kindness."],
+          ["Elder Maren", "Do you know our Wren? A lamp-boy, no higher than my hip. The night the bluff cracked he leapt from the top to warn the village, and the Answer bore him up like a leaf."],
+          ["Elder Maren", "We pin up paper feathers for him every year. It is nearly Wrenfeast now."]
+        ]],
+        ["open", [["Elder Maren", "The door is open. The Answer go with you. It always has."]]],
+        ["key", [
+          ["Elder Maren", "You found the key! Then north past the well and west, under the bluff. Wren keep you."]
+        ]],
         [null, [
-          ["Elder Maren", "A traveller! Good. The sealed door under the bluff has begun to hum, and I am too old to go poking at it."],
-          ["Elder Maren", "The miller hid its brass key in a chest beyond the pond, years ago. If you find it, would you take a look?"],
+          ["Elder Maren", "Oh! One of the Answer's own, here in Lastlea. Forgive an old woman for staring. We prayed, and here you are."],
+          ["Elder Maren", "You will want the stair under the bluff. It has been shut since little Wren's day, and lately it hums."],
+          ["Elder Maren", "The miller keeps its brass key in a chest beyond the pond. Would you fetch it? My knees are not what they were."],
           { "choose": [
-            ["I'll find the key.", [{ "set": "asked" }, ["Elder Maren", "Bless you. Look beyond the pond, where the trees grow thick."]]],
+            ["I'll find the key.", [
+              { "set": "asked" },
+              ["Elder Maren", "Bless you. Look beyond the pond, where the reeds grow thick."]
+            ]],
             ["Not just now.", [["Elder Maren", "Of course. I will be by the well when you change your mind."]]]
           ] }
         ]]
       ] }
     ],
     "merchant": [
-      ["Odo", "Apples, oranges, and a cabbage that has seen better days."],
-      ["Odo", "I am still setting up. Come back when the shop is open."]
+      { "case": [
+        ["offered", [
+          ["Odo", "The bells rang themselves, and now all Lastlea wants a feather. I sold out by noon."],
+          ["Odo", "Odd thing. Every one I hung last night was lying face down this morning. I hung new ones."]
+        ]],
+        ["kept", [
+          ["Odo", "Nobody is buying feathers. They say the Answer has turned its face from us."],
+          ["Odo", "I say it is the weather. I have said it four times today."]
+        ]],
+        [null, [
+          ["Odo", "Paper feathers! One prayer each. No, I jest, take one. It is nearly Wrenfeast."],
+          ["Odo", "The old ledges behind my stall go up to the mill, and to Wren's Leap, if your knees are younger than mine."]
+        ]]
+      ] }
     ],
     "girl": [
-      { "if": "key",
-        "then": [["Pip", "You found the shiny thing! I knew it was there."]],
-        "else": [["Pip", "There is something shiny in the trees past the pond. Turn the view around and you can see it!"]] }
+      { "case": [
+        ["offered", [["Pip", "I asked Elder Maren if Wren is happy now. She said to go and play."]]],
+        ["kept", [
+          ["Pip", "Everyone is cold. There is a boy who hums by the well, and he is not cold."],
+          ["Pip", "He would not say his name. He knew mine."]
+        ]],
+        ["key", [
+          ["Pip", "You found the shiny thing! I knew it was there."],
+          ["Pip", "I made a feather for Wrenfeast. Mine has the most glue."]
+        ]],
+        [null, [
+          ["Pip", "There is something shiny in the reeds past the pond. I saw it glint!"],
+          ["Pip", "Are you an angel? Elder Maren says not to ask."]
+        ]]
+      ] }
+    ],
+    "mill": [
+      { "if": "milled",
+        "then": [["", "WREN'S LEAP, says the worn stone by the mill door. HERE THE CHILD FLEW."], ["", "The miller's crate is empty now. The sails creak round overhead."]],
+        "else": [{ "set": "milled" }, { "give": "tonic", "n": 2 }, ["", "A worn stone is set by the mill door: WREN'S LEAP. HERE THE CHILD FLEW."], ["", "Beside it sits a crate with the miller's mark, left for whoever climbs up at Wrenfeast."], ["", "You take two Tonics. All of Lastlea lies below, small and warm."]] }
     ],
     "chest": [
       { "if": "key",
@@ -71,24 +170,25 @@
     ],
     "door": [
       { "case": [
-        ["won", [["", "The stair below is quiet. The rest of the dungeon comes in a later build."]]],
+        ["won", [["", "The stair drops into the dark. The hall below is quiet now, and a second stair goes on down past it."], { "choose": [["Go down", [{ "go": "darkstair", "at": "stair" }]], ["Not yet", []]] }]],
         ["open", [["", "The stair drops into the dark. Something is moving down there."], { "battle": "underhall" }]],
-        ["!key", [["", "A heavy door, sealed tight. Something hums faintly behind it."]]],
+        ["!key", [["", "A heavy door, sealed tight. Paper feathers are pinned all around its frame."], ["", "Something hums faintly behind it."]]],
         [null, [
           { "set": "open" },
           ["", "The brass key turns with a heavy clunk."],
-          ["", "The door swings open. Cold air rolls up from the dark."],
-          ["Elder Maren", "Not alone, you don’t. Bram, you are coming too."],
-          ["Bram", "Knew I should have stayed at my gate."],
+          ["", "The door swings open. Cold air rolls up from the dark, and the paper feathers stir."],
           ["", "Something stirs below..."],
           { "battle": "underhall" }
         ]]
       ] }
     ],
     "road": [
-      ["", "The shore road runs down to a rowboat pulled up on the shingle."],
-      ["", "You push off toward the light on the rock."],
-      { "go": "lighthouse", "at": "jetty" }
+      ["", "The road forks beyond the gate."],
+      { "choose": [
+        ["The pilgrim road, to the cathedral", [["", "The road climbs between old hedges toward the spires."], { "go": "cathedral", "at": "nave" }]],
+        ["The shore road, to Lighthouse rock", [["", "The shore road runs down to a rowboat pulled up on the shingle."], ["", "You push off toward the light on the rock."], { "go": "lighthouse", "at": "jetty" }]],
+        ["Stay", []]
+      ] }
     ]
   }
 }

@@ -140,7 +140,8 @@ async function make(name) {
   const who = cast.cast[name];
   if (!who) throw new Error('No one called "' + name + '" in art/pixellab/cast.json');
   const s = cast.settings,
-    description = who.description + '. ' + cast.style,
+    // (the cast's style, or the character's own where it has one: a ghost child is not dressed like the party)
+    description = who.description + '. ' + (who.style || cast.style),
     title = who.description.split(',')[0],
     dir = path.join(root, 'art/pixellab', name),
     metaFile = path.join(dir, 'meta.json'),

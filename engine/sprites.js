@@ -3,7 +3,7 @@
 // some facings (the battle's); the icons that bob over things you can use are on the same sheet. A sprite pixel is 1/ppu of a game unit, and the looks draw the world at that scale so
 // sprites stay whole pixels.
 
-async function pixels(url) {
+export async function pixels(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(url + ': ' + r.status);
   const bm = await createImageBitmap(await r.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }),
@@ -38,13 +38,16 @@ export async function loadSprites(base) {
     offY: meta.foot - SH, // (the lowest row of the feet goes a pixel into the ground)
     tall: meta.foot - meta.top, // a standing figure's height, in sprite pixels
     wide: meta.wide,
+    // how far into a walk the legs are widest apart (for a leap)
+    strideAt: meta.stride * 0.3,
     // the frame of character ci facing row (0 south, then clockwise), standing or `dist` game units into its walk
     frame(ci, row, moving, dist) {
       const c = cast[ci],
         col = moving ? c.walk[Math.floor(dist / (meta.stride / c.walk.length)) % c.walk.length] : c.stand;
       return [c.at[0] + col * SW, c.at[1] + row * SH, SW, SH];
     },
-    // frame k of character ci's animation `name` (battle: idle, attack, cast, hurt) facing `row`, as { rect, offY } (each
+    // frame k of character ci's animation `name` (battle: idle, attack, cast, hurt; side-on: run, idle, rise, fall, land,
+    // see pose.js) facing `row`, as { rect, offY } (each
     // facing of an animation has its own frame size, centred on the figure, and the row its feet stand on), or null when it
     // has none drawn that way; its length
     anim(ci, name, row, k) {
@@ -53,6 +56,8 @@ export async function loadSprites(base) {
       return s ? { rect: [s[0] + Math.min(k, a.n - 1) * s[2], s[1], s[2], s[3]], offY: s[4] - s[3] } : null;
     },
     animLength: (ci, name) => (cast[ci].anims && cast[ci].anims[name] ? cast[ci].anims[name].n : 0),
+    // how large character ci is drawn beside the rest of the cast (1 unless the pack says otherwise: a child, say)
+    size: ci => (cast[ci] && cast[ci].size) || 1,
     // lying knocked out, and how far to lower it so it lies on the ground
     ko: ci => meta.ko[names[ci]].slice(0, 4),
     koOffY: ci => meta.ko[names[ci]][4] - meta.ko[names[ci]][3]

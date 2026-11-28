@@ -12,9 +12,17 @@
 //
 // It is shown the way Golden Sun shows its battles: the camera sits low behind the party and swings to whoever acts, then to
 // whatever they act on; Psynergy dims the scene and plays out in light.
+//
+// A battle has an arena of its own ("area"), or is fought "here": on the ground where a foe of the field was met, as in
+// Chrono Trigger. Then the area stays on screen, the party steps out from its leader and the foe to its place, and the
+// camera comes down from the field's view to the battle's and goes back up afterwards (startHere, engine/ground.js).
 import { facing } from './field.js';
 import { createFx } from './fx.js';
+import { sheetFrame } from './sheetfx.js';
+import { createTimed, timedDamage, TIMED } from './timed.js';
+import { HALO } from './party.js';
 import { tile, row } from './icons.js';
+import { fightAt, standsOf } from './ground.js';
 
 const TILT = 0.36, // the battle camera: lower than the field's,
   PERSP = 1 / 70, // with some perspective,
@@ -32,10 +40,17 @@ export function createBattle(g) {
     GY = 1,
     back = null,
     after = null,
-    yaw0 = 0;
-  // the camera, now and where it is heading
-  const cam = { f: [0, 5, 0], yaw: 0, zoom: 1, tilt: TILT },
-    aim = { f: [0, 5, 0], yaw: 0, zoom: 1, tilt: TILT, rate: 4 };
+    yaw0 = 0,
+    here = null, // a battle fought in place: { at, to, y, th, c, s, foe, from } (its layout set down on the area)
+    skew = SKEW;
+  // the camera, now and where it is heading (persp: how strong its lens is; strip: how much of the side view it keeps)
+  const cam = { f: [0, 5, 0], yaw: 0, zoom: 1, tilt: TILT, persp: PERSP, strip: 0 },
+    aim = { f: [0, 5, 0], yaw: 0, zoom: 1, tilt: TILT, persp: PERSP, strip: 0, rate: 4 };
+  // A battle is laid out in units of its own, the foes toward -x of the party. In an arena those are the arena's; in place
+  // W takes a spot of the layout to the area's ground, and D a step.
+  const W = (x, z) => (here ? here.to(x, z) : [x, z]),
+    D = (x, z) => (here ? [x * here.c - z * here.s, x * here.s + z * here.c] : [x, z]),
+    turnTo = (a, to) => a + Math.round((to - a) / (2 * Math.PI)) * 2 * Math.PI; // the same heading as a, nearest to
   const bmsg = s => ($('bmsg').textContent = s),
     items = () => g.content.game.items || {},
     living = side => B.units.filter(u => u.side === side && u.hp > 0),
@@ -52,23 +67,40 @@ export function createBattle(g) {
   // ---- setting up and tearing down
   function setup(id) {
     def = g.content.battles[id];
-    GY = def.ground === undefined ? 1 : def.ground;
-    Object.assign(B, { on: true, units: [], round: 0, wall: 0, shake: 0, act: null, end: null, menu: null, pend: null, cur: null, phase: 'intro', timer: 1.7, order: [], oi: 0 });
-    for (const id2 of g.content.game.party) {
-      const h = g.content.heroes[id2];
-      B.units.push(Object.assign({ side: 'hero', x: h.at[0], z: h.at[1], hx: h.at[0], hz: h.at[1], fl: 0, flc: [1, 1, 1], kb: 0, hop: 0, dist: 0, run: false, guard: false, ko: false, hp: h.mhp, mp: h.mmp, glow: null }, h, { id: id2, ci: SP.names.indexOf(h.sprite), skills: h.skills.map(s => Object.assign({ id: s }, g.content.skills[s])) }));
+    GY = here ? here.y : def.ground === undefined ? 1 : def.ground;
+    Object.assign(B, { on: true, here: !!here, units: [], round: 0, wall: 0, shake: 0, act: null, end: null, menu: null, pend: null, cur: null, phase: 'intro', timer: 1.7, order: [], oi: 0, enter: null, leave: null });
+    for (const id2 of g.party()) {
+      const h = g.hero(id2),
+        p = here ? here.at[B.units.length] : h.at;
+      B.units.push(Object.assign({ side: 'hero', x: p[0], z: p[1], hx: p[0], hz: p[1], fl: 0, flc: [1, 1, 1], kb: 0, hop: 0, dist: 0, run: false, guard: false, ko: false, hp: h.mhp, mp: h.mmp, glow: null }, h, { id: id2, ci: SP.names.indexOf(h.sprite), skills: h.skills.map(s => Object.assign({ id: s }, g.content.skills[s])) }));
     }
     for (const f of def.foes) {
-      const m = g.content.monsters[f.type];
-      B.units.push(Object.assign({ side: 'foe', x: f.at[0], z: f.at[1], hx: f.at[0], hz: f.at[1], fl: 0, flc: [1, 1, 1], clip: 'idle', ct: Math.random() * 2, dis: 0, gone: false, boom: false, jit: 0, n: 0, hp: m.mhp }, m, { id: f.type }));
+      const m = g.content.monsters[f.type],
+        p = here ? here.at[B.units.length] : f.at;
+      B.units.push(Object.assign({ side: 'foe', x: p[0], z: p[1], hx: p[0], hz: p[1], fl: 0, flc: [1, 1, 1], clip: 'idle', ct: Math.random() * 2, dis: 0, gone: false, boom: false, jit: 0, n: 0, hp: m.mhp }, m, { id: f.type }));
     }
     B.units.forEach((u, i) => (u.i = i));
     // the camera looks from behind the party towards the foes, which sit up and to the left; it starts wide and swings in
     const H = centre(side('hero')),
       F = centre(side('foe'));
-    yaw0 = Math.atan2(F[1] - H[1], F[0] - H[0]) - Math.PI / 2 - SKEW;
+    // (in place the two sides stand closer: the camera comes further round, so that the foes still sit clear of the party)
+    skew = here ? Math.max(SKEW, Math.asin(Math.min(0.8, 8 / Math.hypot(F[0] - H[0], F[1] - H[1])))) : SKEW;
+    yaw0 = Math.atan2(F[1] - H[1], F[0] - H[0]) - Math.PI / 2 - skew;
     fx.clear();
-    Object.assign(cam, { f: [F[0], GY + 6, F[1]], yaw: yaw0 + 1.5, zoom: 0.8, tilt: 0.75 });
+    drawn.length = floor.length = 0;
+    if (here) {
+      // in place: everyone starts where they were on the field (the party as one, at its leader) and goes to their place
+      // while the camera comes down from where the field had it; whoever is wandering there gets out of the way
+      const fh = g.field.hero,
+        M = centre(B.units);
+      g.field.clear(M[0], M[1], Math.max(...B.units.map(u => Math.hypot(u.x - M[0], u.z - M[1]))) + 3, [Math.sin(yaw0), -Math.cos(yaw0)]);
+      for (const u of B.units) {
+        const from = u.side === 'hero' ? [fh.x, fh.z] : here.from;
+        Object.assign(u, { sx: from[0], sz: from[1], x: from[0], z: from[1] });
+      }
+      B.enter = { t: 0, dur: 0.8 };
+      Object.assign(cam, { f: g.cam.focus.slice(), yaw: turnTo(g.cam.yaw, yaw0), zoom: 1, tilt: back.tilt, persp: back.persp, strip: back.strip });
+    } else Object.assign(cam, { f: [F[0], GY + 6, F[1]], yaw: yaw0 + 1.5, zoom: 0.8, tilt: 0.75, persp: PERSP, strip: 0 });
     g.cam.shake = 0;
     ui.el.hint.style.display = 'none';
     ui.el.opts.style.display = 'none';
@@ -121,8 +153,85 @@ export function createBattle(g) {
     );
   }
 
+  // Fight battle `id` on the spot, against a foe of the field met at `at` ({ x, z, foe }). Returns false if it cannot be
+  // fought here just now (no level ground near, or the foes' models not yet loaded); cb(won) as for start.
+  function startHere(id, at, cb) {
+    if (B.busy || B.on || !g.area || g.look.kind !== 'gen') return false;
+    const d = g.content.battles[id],
+      fh = g.field.hero;
+    if (d.foes.some(f => !g.rigs[g.content.monsters[f.type].rig])) return false;
+    const stands = standsOf(g.content.heroes, g.party(), d),
+      // which way the party's side lies from the foes', and so where the camera sits: as the area says (it knows from
+      // where its ground can be seen), or as they met
+      v = (g.area.def.fight && g.area.def.fight.from) || [fh.x - at.x, fh.z - at.z],
+      th = Math.atan2(v[1], v[0]),
+      c = Math.cos(th),
+      sn = Math.sin(th),
+      // the nearest ground that will hold the two sides
+      spot = fightAt(g.area.nav, stands, [fh.x, fh.z], [at.x, at.z], th);
+    if (!spot) return false;
+    here = { at: spot.at, to: spot.to, y: spot.y, th, c, s: sn, foe: at.foe, from: [at.x, at.z] };
+    back = { area: g.area, yaw: g.cam.yawT, tilt: g.look.viewTilt === undefined ? TILT : g.look.viewTilt, persp: g.look.persp || 0, strip: g.look.viewStrip || 0, pos: [fh.x, fh.z] };
+    after = cb;
+    g.field.stop();
+    if (at.foe) at.foe.inFight = true;
+    g.mode = 'battle';
+    setup(id);
+    return true;
+  }
+
+  // out of a battle fought in place, back to the field with the leader at (x, z); returns what is still to do, the
+  // battle's closing script
+  function endHere(won, x, z) {
+    const foe = here.foe,
+      F = centre(B.units.filter(u => u.side === 'foe'));
+    g.mode = 'field';
+    B.on = B.here = false;
+    B.leave = null;
+    here = null;
+    fx.clear();
+    drawn.length = floor.length = 0;
+    ui.el.ov.innerHTML = '';
+    $('bp').classList.add('off');
+    $('bparty').innerHTML = '';
+    ui.el.hint.style.display = '';
+    ui.el.opts.style.display = '';
+    g.cam.shake = 0;
+    if (foe) {
+      foe.inFight = false;
+      if (won) foe.beaten = true;
+    }
+    g.field.settle(x, z, won ? [F[0] - x, F[1] - z] : null, won ? null : foe);
+    g.cam.focus = g.field.focusOf(x, z);
+    g.cam.yaw = g.cam.yawT = back.yaw;
+    B.busy = false;
+    const cb = after,
+      script = (won ? def.won : def.lost) || [];
+    after = null;
+    return () => g.run(script, () => cb && cb(won));
+  }
+
   function finish(won) {
     if (B.busy) return;
+    if (here && won) {
+      // won in place: the others fall in behind the leader again while the camera goes back up to the field's view
+      const lead = B.units.find(u => u.side === 'hero' && u.ci === g.leader) || B.units.find(u => u.side === 'hero');
+      B.busy = true;
+      B.phase = 'leave';
+      B.leave = { t: 0, dur: 0.7, x: lead.hx, z: lead.hz, f: g.field.focusOf(lead.hx, lead.hz) };
+      for (const u of B.units) Object.assign(u, { sx: u.x, sz: u.z });
+      $('bcmd').innerHTML = '';
+      return;
+    }
+    if (here) {
+      // lost in place: a blink, and the party is back where it stood before the fight
+      B.busy = true;
+      let then = null;
+      return ui.fade(
+        () => (then = endHere(false, back.pos[0], back.pos[1])),
+        () => then()
+      );
+    }
     B.busy = true;
     ui.fade(
       () => {
@@ -222,6 +331,26 @@ export function createBattle(g) {
     return Math.max(1, Math.round(v));
   }
 
+  // ---- timed hits (engine/timed.js): a press as a blow lands. blow() is a damaging hit with the timing counted in
+  const timed = createTimed();
+  let hints = 0;
+  function press() {
+    if (g.mode === 'battle' && B.on && B.phase === 'act') timed.press(g.t);
+  }
+  document.addEventListener('pointerdown', press);
+  window.addEventListener('keydown', e => (e.key === ' ' || e.key === 'Enter') && !e.repeat && press());
+  function blow(u, x, power, magic, col, quiet, grade) {
+    const byHero = u.side === 'hero',
+      who = byHero ? u : x;
+    hit(x, timedDamage(damage(u, power, x, magic), who.side === 'hero' ? grade : 0, byHero), col, quiet);
+    if (grade && who.side === 'hero') {
+      pop(who, TIMED.word[grade], 'txt timed');
+      who.fl = 1;
+      who.flc = [1, 0.95, 0.6];
+      if (grade === 2) fx.flash('#fff', 0.12);
+    }
+  }
+
   // ---- effects laid over the picture
   const upos = (u, h) => ui.toStage(g.look.project(u.x, GY + (h === undefined ? (u.side === 'foe' ? u.mid : 4) : h), u.z));
   // a number (or a word) that springs up over a unit and stays with it while the camera moves
@@ -245,6 +374,21 @@ export function createBattle(g) {
     q.e.style.top = p[1] + 'px';
   }
   // an effect on a unit (or, with `to`, from one unit to the others)
+  // a drawn effect (engine/sheetfx.js) on a unit, if it loaded: each part a card at its own place round the unit
+  const drawn = [],
+    floor = [];
+  function playSheet(name, u) {
+    const s = g.sheets[name];
+    if (!s) return false;
+    const r = u.side === 'foe' ? u.rad + 0.4 : 1.6;
+    for (const p of s.parts) drawn.push({ s, sh: s.sheets[p.sheet], u, r, t0: g.t + p.t, at: p.at, flip: p.flip, lift: p.lift === 'mid' ? (u.side === 'foe' ? u.mid : 3.2) : 0 });
+    for (const q of s.rings) floor.push({ u, r, t0: g.t + q.t, dur: q.dur, r0: q.r[0], r1: q.r[1], c0: fx.color(q.color), c1: fx.color(q.to || q.color) });
+    if (B.act) {
+      for (const k of s.hits) if (k.shake) B.act.steps.push({ at: B.act.t + k.t, fn: () => (B.shake = Math.max(B.shake || 0, k.shake * 0.15)) });
+      B.act.steps.sort((a, b) => a.at - b.at);
+    }
+    return true;
+  }
   function play(name, u, o) {
     fx.play(name, Object.assign({ at: feet(u), h: tall(u), r: u.side === 'foe' ? u.rad : 1.4, right: right() }, o));
   }
@@ -299,26 +443,32 @@ export function createBattle(g) {
       steps.push({ at: first, fn: () => (u.glow = null) }, { at: Math.max(first, dur - 0.3), fn: () => fx.dimTo(0) });
       B.act.steps.sort((a, b) => a.at - b.at);
     }
-    bmsg(text);
+    timed.reset();
+    bmsg(text + (steps.some(s => s.cue) && hints++ < 3 ? ' Tap as the ring closes!' : ''));
     renderParty();
   }
   const strike = (u, tx, tz) => [
     { u, a: [u.hx, u.hz], b: [tx, tz], t0: 0, t1: 0.32 },
-    { u, a: [tx, tz], b: [tx - 0.9, tz], t0: 0.32, t1: 0.52, hop: 1.3 },
-    { u, a: [tx - 0.9, tz], b: [u.hx, u.hz], t0: 0.62, t1: 0.96 }
+    { u, a: [tx, tz], b: [tx + D(-0.9, 0)[0], tz + D(-0.9, 0)[1]], t0: 0.32, t1: 0.52, hop: 1.3 },
+    { u, a: [tx + D(-0.9, 0)[0], tz + D(-0.9, 0)[1]], b: [u.hx, u.hz], t0: 0.62, t1: 0.96 }
   ];
-  const stepIn = (u, d) => [
-    { u, a: [u.hx, u.hz], b: [u.hx - d, u.hz], t0: 0, t1: 0.22 },
-    { u, a: [u.hx - d, u.hz], b: [u.hx - d, u.hz], t0: 0.22, t1: 0.5, hop: 0.9 },
-    { u, a: [u.hx - d, u.hz], b: [u.hx, u.hz], t0: 0.6, t1: 0.85 }
-  ];
+  const stepIn = (u, d) => {
+    const q = D(-d, 0),
+      to = [u.hx + q[0], u.hz + q[1]];
+    return [
+      { u, a: [u.hx, u.hz], b: to, t0: 0, t1: 0.22 },
+      { u, a: to, b: to, t0: 0.22, t1: 0.5, hop: 0.9 },
+      { u, a: to, b: [u.hx, u.hz], t0: 0.6, t1: 0.85 }
+    ];
+  };
   function movesOf(spec, u, tg) {
     if (!spec) return [];
-    if (spec[0] === 'strike') return strike(u, spec[1], spec[2]);
+    if (spec[0] === 'strike') return strike(u, ...W(spec[1], spec[2]));
     if (spec[0] === 'step') return stepIn(u, spec[1]);
     if (spec[0] === 'lunge') {
-      const tx = tg.x + spec[1],
-        tz = tg.z + spec[2];
+      const q = D(spec[1], spec[2]),
+        tx = tg.x + q[0],
+        tz = tg.z + q[1];
       return [
         { u, a: [u.hx, u.hz], b: [tx, tz], t0: 0.02, t1: 0.27 },
         { u, a: [tx, tz], b: [u.hx, u.hz], t0: 0.6, t1: 1.02 }
@@ -333,8 +483,10 @@ export function createBattle(g) {
       targets = () => (t === 'foes' ? living('foe') : t === 'heroes' ? living('hero') : t === 'self' ? [u] : [tg]),
       steps = (act.hits || []).map(h => ({
         at: h.at,
+        cue: h.power ? targets : null,
         fn() {
-          const list = targets().filter(x => x.hp > 0);
+          const list = targets().filter(x => x.hp > 0),
+            grade = h.power ? timed.grade(g.t) : 0;
           if (h.shake) B.shake = h.shake;
           if (h.screen) fx.flash(h.color || '#fff', h.screen);
           if (h.fx && ONCE[h.fx]) play(h.fx, u, { color: h.color, from: feet(u), fh: tall(u) * 0.6, targets: list.map(feet), h: 6.4 });
@@ -346,8 +498,9 @@ export function createBattle(g) {
             }
           }
           for (const x of list) {
-            if (h.fx && !ONCE[h.fx]) play(h.fx, x, { color: h.color, from: [u.x, GY + (u.side === 'foe' ? u.mid : 4), u.z] });
-            if (h.power) hit(x, damage(u, h.power, x, !!h.magic), h.flash, !!h.fx);
+            const drew = h.sheet && playSheet(h.sheet, x);
+            if (!drew && h.fx && !ONCE[h.fx]) play(h.fx, x, { color: h.color, from: [u.x, GY + (u.side === 'foe' ? u.mid : 4), u.z] });
+            if (h.power) blow(u, x, h.power, !!h.magic, h.flash, !!h.fx, grade);
             if (h.heal) heal(x, h.heal);
           }
         }
@@ -357,7 +510,8 @@ export function createBattle(g) {
   }
 
   function doAttack(u, f) {
-    run(strike(u, f.x + f.rad + 1.8, f.z + 0.4), [{ at: 0.28, fn: () => pose(u, 'attack', 0.45) }, { at: 0.42, fn: () => (play('slash', f), hit(f, damage(u, 1, f, false), null, true)) }], 1.15, u.name + ' attacks the ' + f.name + '.', { user: u, targets: [f] });
+    const q = D(f.rad + 1.8, 0.4);
+    run(strike(u, f.x + q[0], f.z + q[1]), [{ at: 0.28, fn: () => pose(u, 'attack', 0.45) }, { at: 0.42, cue: () => [f], fn: () => (play('slash', f), blow(u, f, 1, false, null, true, timed.grade(g.t))) }], 1.15, u.name + ' attacks the ' + f.name + '.', { user: u, targets: [f] });
   }
   function doGuard(u) {
     u.guard = true;
@@ -466,8 +620,10 @@ export function createBattle(g) {
       F = centre(side('foe')),
       at = (p, k) => [p[0], GY + (k || 3.6), p[1]],
       between = k => at([H[0] + (F[0] - H[0]) * k, H[1] + (F[1] - H[1]) * k]),
-      set = (f, yaw, zoom, rate) => Object.assign(aim, { f, yaw: yaw0 + yaw, zoom: zoom * ZOOM, tilt: TILT, rate: rate || 4 }),
+      set = (f, yaw, zoom, rate) => Object.assign(aim, { f, yaw: yaw0 + yaw, zoom: zoom * ZOOM, tilt: TILT, persp: PERSP, strip: 0, rate: rate || 4 }),
       a = B.act;
+    // (leaving a battle fought in place: back to the view the field had)
+    if (B.phase === 'leave') return Object.assign(aim, { f: B.leave.f, yaw: turnTo(back.yaw, cam.yaw), zoom: 1, tilt: back.tilt, persp: back.persp, strip: back.strip, rate: 7 });
     if (B.phase === 'intro') return set(between(0.62), 0, 1, 2.4);
     if (B.phase === 'command') {
       if (B.menu === 'foe') return set(between(0.75), -0.12, 1.08);
@@ -499,6 +655,8 @@ export function createBattle(g) {
     cam.yaw += (aim.yaw - cam.yaw) * k;
     cam.zoom += (aim.zoom - cam.zoom) * k;
     cam.tilt += (aim.tilt - cam.tilt) * k;
+    cam.persp += (aim.persp - cam.persp) * k;
+    cam.strip += (aim.strip - cam.strip) * k;
     g.cam.focus = cam.f;
     g.cam.yaw = g.cam.yawT = cam.yaw;
     fx.update(dt);
@@ -526,6 +684,29 @@ export function createBattle(g) {
       } else u.kb = Math.max(0, u.kb - dt * 5);
     }
     B.shake = Math.max(0, B.shake - dt * 2.6);
+    if (here) g.field.bystand(dt);
+    if (B.enter || B.leave) {
+      // a battle in place: to their places as it opens; behind the leader again as it closes, and then the field
+      const m = B.enter || B.leave;
+      m.t += dt;
+      const k = Math.min(1, m.t / m.dur),
+        e = k * k * (3 - 2 * k);
+      for (const u of B.units) {
+        if (B.leave && (u.side !== 'hero' || u.ko)) continue;
+        const to = B.leave ? [m.x, m.z] : [u.hx, u.hz],
+          px = u.x,
+          pz = u.z;
+        u.x = u.sx + (to[0] - u.sx) * e;
+        u.z = u.sz + (to[1] - u.sz) * e;
+        if (u.side === 'hero') {
+          u.dist += Math.hypot(u.x - px, u.z - pz);
+          u.run = k < 1 && Math.hypot(to[0] - u.sx, to[1] - u.sz) > 0.5;
+          u.going = u.run ? [to[0] - u.sx, to[1] - u.sz] : null;
+        }
+      }
+      if (B.enter && k >= 1) B.enter = null;
+      else if (B.leave && m.t >= m.dur + 0.35) return endHere(true, m.x, m.z)();
+    }
     if (B.phase === 'intro') {
       B.timer -= dt;
       if (B.timer <= 0) {
@@ -617,15 +798,51 @@ export function createBattle(g) {
       away = [H[0] - F[0], H[1] - F[1]],
       al = Math.hypot(away[0], away[1]) || 1,
       out = fx.emit();
-    Object.assign(fr.cam, { focus: cam.f, yaw: cam.yaw, still: false, tilt: cam.tilt, zoom: cam.zoom, persp: PERSP });
+    Object.assign(fr.cam, { focus: cam.f, yaw: cam.yaw, still: false, tilt: cam.tilt, zoom: cam.zoom, persp: cam.persp, strip: cam.strip });
     fr.fx = out.fx;
     fr.dim = out.dim;
     fr.flash = out.flash;
+    // drawn effects: the cards far to near (they do not hide one another by depth), and their rings on the ground
+    for (let i = drawn.length - 1; i >= 0; i--) {
+      const e = drawn[i];
+      if (t < e.t0) continue;
+      const q = sheetFrame(e.sh, Math.floor((t - e.t0) * e.sh.fps));
+      if (!q) {
+        drawn.splice(i, 1);
+        continue;
+      }
+      const a = e.at[0] * e.r,
+        b = -e.at[1] * e.r;
+      fr.sheets.push({ tex: e.s.tex, colour: q.colour, light: q.light, gain: e.s.gain, flip: e.flip, near: e.at[1] * e.r + e.u.x * -ax.fwd[0] + e.u.z * -ax.fwd[1], x: e.u.x + ax.right[0] * a + ax.fwd[0] * b, y: GY + e.lift, z: e.u.z + ax.right[1] * a + ax.fwd[1] * b, offY: e.sh.pivot[1] - e.sh.cell[1] });
+    }
+    fr.sheets.sort((p, q) => p.near - q.near);
+    // a timed hit's cue: a ring closing on whoever the blow is for, shut as it lands
+    if (B.act)
+      for (let i = B.act.i; i < B.act.steps.length; i++) {
+        const s = B.act.steps[i],
+          left = s.at - B.act.t;
+        if (!s.cue || left > TIMED.cue) continue;
+        const k = Math.max(0, left / TIMED.cue),
+          sharp = left <= TIMED.sharp;
+        for (const u of s.cue()) if (u.hp > 0) fr.fxRings.push({ x: u.x, y: GY + 0.3, z: u.z, r: (u.side === 'foe' ? u.rad + 0.6 : 2) * (1 + 1.5 * k), col: sharp ? [1, 1, 1] : left <= TIMED.early ? [1, 0.92, 0.45] : [0.75, 0.7, 0.5] });
+      }
+    for (let i = floor.length - 1; i >= 0; i--) {
+      const e = floor[i],
+        k = (t - e.t0) / e.dur;
+      if (k < 0) continue;
+      if (k >= 1) {
+        floor.splice(i, 1);
+        continue;
+      }
+      const o = 1 - (1 - k) * (1 - k);
+      fr.fxRings.push({ x: e.u.x, y: GY + 0.3, z: e.u.z, r: (e.r0 + (e.r1 - e.r0) * o) * e.r, col: [0, 1, 2].map(j => e.c0[j] + (e.c1[j] - e.c0[j]) * k) });
+    }
     for (const f of B.units) {
       if (f.side !== 'foe' || f.gone) continue;
       // (a foe that is hit shudders across the picture)
       const j = Math.sin(t * 75) * 0.5 * f.jit;
-      fr.models.push({ rig: g.rigs[f.rig], clip: f.clip, time: f.ct, x: f.x + ax.right[0] * j, y: GY, z: f.z + ax.right[1] * j, dis: f.dis, flash: f.fl * 0.7, flashC: f.flc });
+      // (the foes are baked facing the party of an arena, at +x: in place they turn with the layout)
+      fr.models.push({ rig: g.rigs[f.rig], clip: f.clip, time: f.ct, x: f.x + ax.right[0] * j, y: GY, z: f.z + ax.right[1] * j, dis: f.dis, flash: f.fl * 0.7, flashC: f.flc, yaw: here ? -here.th : 0 });
     }
     for (const u of B.units) {
       if (u.side === 'hero') fr.blobs.push({ x: u.x, y: GY + 0.25, z: u.z, r: u.ko ? 1.9 : 1.3 });
@@ -637,7 +854,9 @@ export function createBattle(g) {
     const a = B.act;
     for (const u of B.units) {
       if (u.side !== 'hero') continue;
-      const base = u.guard ? [0.78, 0.9, 1.25] : [0.9, 0.92, 1.02],
+      // (a hero may have a colour of their own: an echo is paler than the living)
+      const own = u.tint || [1, 1, 1],
+        base = (u.guard ? [0.78, 0.9, 1.25] : [0.9, 0.92, 1.02]).map((v, i) => v * own[i]),
         k = u.fl,
         tint = [base[0] + (2.4 * u.flc[0] - base[0]) * k, base[1] + (2.4 * u.flc[1] - base[1]) * k, base[2] + (2.4 * u.flc[2] - base[2]) * k];
       if (u.glow) {
@@ -646,15 +865,20 @@ export function createBattle(g) {
           p = 0.45 + 0.35 * Math.sin(t * 18);
         for (let i = 0; i < 3; i++) tint[i] += c[i] * p;
       }
+      const k3 = g.content.heroes[u.id] && g.content.heroes[u.id].model;
+      if (u.ko && k3 && g.rigs[k3.rest]) {
+        fr.models.push({ rig: g.rigs[k3.rest], clip: 'defeat', time: 9, x: u.x, y: GY, z: u.z, dis: 0, flash: 0, flashC: u.flc, yaw: Math.atan2(F[0] - u.x, F[1] - u.z) });
+        continue;
+      }
       if (u.ko) {
-        fr.sprites.push({ rect: SP.ko(u.ci), flip: 0, x: u.x, y: GY, z: u.z, tint: [0.7, 0.72, 0.86], offY: SP.koOffY(u.ci), bias: 0.66 });
+        fr.sprites.push({ rect: SP.ko(u.ci), flip: 0, x: u.x, y: GY, z: u.z, tint: [0.7, 0.72, 0.86], offY: SP.koOffY(u.ci), bias: 0.66, size: SP.size(u.ci) });
         continue;
       }
       // seen from behind, facing whatever they are acting on (or the foes, and the foes while gathering power); a pose
       // plays if there is one, else they walk, or at rest breathe (the sprite pack's idle, or a little bob without one)
       const casting = a && a.user === u && a.cast && a.t < a.castEnd,
         tg = a && a.user === u && !casting && a.targets[0] && a.targets[0] !== u ? a.targets[0] : null,
-        to = tg ? [tg.x - u.x, tg.z - u.z] : [F[0] - u.x, F[1] - u.z],
+        to = u.going ? u.going : tg ? [tg.x - u.x, tg.z - u.z] : [F[0] - u.x, F[1] - u.z],
         row = facing(to[0], to[1], ax),
         p = u.pose && (u.pose.hold || t - u.pose.t0 < u.pose.dur) ? u.pose : null,
         n = p ? SP.animLength(u.ci, p.name) : 0,
@@ -667,9 +891,26 @@ export function createBattle(g) {
         an = m ? SP.anim(u.ci, 'idle', row, Math.floor(t * 7 + u.i * 3) % m) : null;
         if (!an) bob = Math.sin(t * 3.3 + u.i * 1.9) > 0.2 ? 1 : 0;
       }
-      fr.sprites.push({ rect: an ? an.rect : SP.frame(u.ci, row, u.run, u.dist), flip: 0, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: (an ? an.offY : SP.offY) + bob, bias: 0.66 });
+      // a hero with a model (heroes.json "model": { rest, move }) is drawn as that model, as the foes are, not as a sprite:
+      // "rest" holds its idle and attack, "move" its run (as that rig's idle) and its cast (as that rig's attack)
+      const h3 = g.content.heroes[u.id] && g.content.heroes[u.id].model;
+      if (h3 && g.rigs[h3.rest] && g.rigs[h3.move]) {
+        let rig = g.rigs[h3.rest],
+          clip = 'idle',
+          time = t + u.i * 0.7;
+        const part = c => Math.min((t - p.t0) / p.dur, 0.999) * rig.clips[c].dur;
+        if (p && p.name === 'attack') ((clip = 'attack'), (time = part('attack')));
+        else if (p && p.name === 'cast') ((rig = g.rigs[h3.move]), (clip = 'attack'), (time = part('attack')));
+        else if (p && p.name === 'hurt') ((clip = 'hurt'), (time = part('hurt')));
+        else if (u.run) rig = g.rigs[h3.move];
+        fr.models.push({ rig, clip, time, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, dis: 0, flash: u.fl * 0.7, flashC: u.flc, yaw: Math.atan2(to[0], to[1]) });
+        continue;
+      }
+      fr.sprites.push({ rect: an ? an.rect : SP.frame(u.ci, row, u.run, u.dist), flip: 0, x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0), z: u.z + (away[1] / al) * kb, tint, offY: (an ? an.offY : SP.offY) + bob, bias: 0.66, size: SP.size(u.ci) });
+      // (a hero with a "halo" wears a thin ring of light over their head)
+      if (u.halo) fr.rings.push({ x: u.x + (away[0] / al) * kb, y: GY + (u.hop || 0) + HALO, z: u.z + (away[1] / al) * kb, r: 0.95, col: [1, 0.9, 0.56] });
     }
   }
 
-  return { B, start, update, build, overlay, tap };
+  return { B, start, startHere, update, build, overlay, tap, press };
 }

@@ -1,20 +1,38 @@
 {
+  "doorwisp": {
+    "here": true,
+    "foes": [{ "type": "wisp", "at": [-8, 1] }],
+    "intro": "A Hum Wisp drifts across the path to the old door!",
+    "wonMsg": "Victory! The wisp winks out.",
+    "lostMsg": "You are driven back.",
+    "won": [{ "set": "wisp" }, ["", "The wisp is gone. Under the bluff, the old door hums on."]],
+    "lost": [["", "You fall back to catch your breath. The wisp drifts back to where it hung."]]
+  },
   "underhall": {
     "area": "underhall",
     "ground": 1.0,
     "foes": [{ "type": "mossback", "at": [-12, -4.5] }, { "type": "wisp", "at": [-7, 7.5] }],
     "intro": "A Mossback and a Hum Wisp block the stair!",
     "wonMsg": "Victory! The humming fades from the hall.",
-    "lostMsg": "The party is driven back up the stair.",
+    "lostMsg": "You are driven back up the stair.",
     "won": [
       { "set": "won" },
-      ["Elder Maren", "It has gone quiet. For now."],
-      ["Bram", "Then I am going back to my gate."],
-      ["", "That is the end of this slice. Next: the rest of the dungeon."]
+      ["", "It has gone quiet. A row of lamp brackets runs along the wall, each one set very low."],
+      ["", "Past the hall a second stair goes on down into the dark. The door will take you there."]
     ],
     "lost": [
-      ["", "The party scrambles back up the stair to catch its breath."],
-      ["Elder Maren", "Again, when you are ready. Use Shield Wall when the big one stomps."]
+      ["", "You climb back up the stair to catch your breath."],
+      ["", "Again, when you are ready. A press as a blow lands makes it count for more. Mend and Tonics keep you standing."]
     ]
+  },
+  "wardens": {
+    "area": "underhall",
+    "ground": 1.0,
+    "foes": [{ "type": "warden", "at": [-11, -4.5] }, { "type": "warden", "at": [-8, 6.5] }],
+    "intro": "Two lamps swing down out of the dark. Nobody is holding them!",
+    "wonMsg": "Victory! The lamps gutter out.",
+    "lostMsg": "You are driven back from the balcony.",
+    "won": [{ "set": "warded" }, ["", "The lamps go out one after the other, the way lamps do at the end of a shift."]],
+    "lost": [["", "You fall back to catch your breath. The lamps hang where they were, waiting."]]
   }
 }

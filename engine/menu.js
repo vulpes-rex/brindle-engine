@@ -20,7 +20,7 @@ export function createMenu(g, save) {
         .filter(id => g.items[id] > 0 && all[id])
         .map(id => Object.assign({ id, n: g.items[id] }, all[id]));
     },
-    heroes = () => g.content.game.party.map(id => Object.assign({ id }, g.content.heroes[id])),
+    heroes = () => g.party().map(id => Object.assign({ id }, g.hero(id))),
     aboutItem = it => it.about || (it.heal ? 'Restores ' + it.heal + ' HP.' : ''),
     aboutSkill = s => s.about || AIM[s.target] || '';
 

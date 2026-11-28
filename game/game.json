@@ -1,11 +1,13 @@
 {
-  "title": "Brindlebrook",
-  "saveKey": "brindle.save.1",
-  "leader": "hero",
-  "party": ["tam", "bram", "maren"],
+  "title": "Underhymn",
+  "saveKey": "underhymn.save.1",
+  "leader": "lastmade",
+  "party": ["lastmade", { "id": "wren", "if": { "all": ["feather", "!offered"] } }],
   "start": { "area": "brindlebrook", "spawn": "start", "items": { "tonic": 3 } },
   "items": { "tonic": { "name": "Tonic", "heal": 40, "about": "A bitter green brew. Restores 40 HP in battle." } },
   "monsterPack": "packs/monsters.json",
   "sprites": "packs/sprites",
-  "preload": ["underhall", "lighthouse"]
+  "effects": "packs/fx",
+  "meshes": "packs/mesh",
+  "preload": ["underhall", "darkstair", "cathedral", "lighthouse"]
 }

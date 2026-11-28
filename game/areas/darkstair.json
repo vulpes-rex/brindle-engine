@@ -1,0 +1,134 @@
+{
+  "name": "The Dark Stair",
+  "look": "gen",
+  "scene": "darkstair",
+  "tint": [0.9, 0.88, 1.0],
+  "spawns": { "stair": { "at": [0, -62], "face": [0, 1] }, "memory": { "at": [0, -55], "face": [0, 1] } },
+  "actors": [
+    { "id": "maren-then", "sprite": "maren-then", "name": "Maren", "at": [0, -60], "face": [0, 1], "memory": true },
+    { "id": "wren-then", "sprite": "wren-then", "name": "Wren", "at": [0, -56.5], "face": [0, -1], "memory": true }
+  ],
+  "side": {
+    "only": true,
+    "jump": true,
+    "sky": "cave",
+    "roll": 0,
+    "kill": -9,
+    "ceil": 10,
+    "double": "feather",
+    "hint": "Stick walks, A jumps. Slabs glide, planks give way. A fall sets you back on firm ground.",
+    "lanes": [{ "name": "stair", "x": 0, "z": [-68, 70], "ledge": true }],
+    "columns": []
+  },
+  "meshes": [
+    { "mesh": "darkstair", "world": true },
+    { "mesh": "slab", "part": "move" },
+    { "mesh": "plank", "part": "crumble" }
+  ],
+  "props": [
+    { "id": "up", "poi": "up", "h": 5.5, "r": 2, "hit": 18, "script": "up", "icon": "exit" },
+    { "id": "niche", "poi": "niche", "h": 3.2, "r": 1.6, "hit": 13, "script": "niche" },
+    { "id": "rope", "poi": "rope", "h": 2.4, "r": 1.6, "hit": 13, "script": "rope" },
+    { "id": "oil", "poi": "oil", "h": 2.6, "r": 1.6, "hit": 13, "script": "oil" },
+    { "id": "relic", "poi": "relic", "h": 5, "r": 1.6, "hit": 14, "script": "relic" },
+    { "id": "chest", "poi": "chest", "h": 2.6, "r": 1.8, "hit": 13, "script": "chest", "show": "!stair" },
+    { "id": "ring", "poi": "ring", "h": 3, "r": 2, "hit": 16, "script": "ring", "icon": "exit" }
+  ],
+  "hints": [
+    ["stair", "The Dark Stair is done. The ring of light on the balcony leads back up. The Answer waits in the cathedral."],
+    ["feather", "Wren is with you. Press A again in the air for a second jump: the shelf past the high block is in reach."],
+    [null, "Tap A to jump. Slabs glide, planks give way. B looks at what was left behind."]
+  ],
+  "scripts": {
+    "up": [
+      ["", "The stair climbs back to the door under the bluff."],
+      { "choose": [["Go up", [{ "go": "brindlebrook", "at": "door" }]], ["Stay", []]] }
+    ],
+    "niche": [
+      ["", "A lamp niche, cut low in the wall. You have to stoop to see into it."],
+      ["", "Inside, a row of little scratches. Someone small was counting something."]
+    ],
+    "rope": [
+      ["", "An iron peg is driven into the floor here, worn bright where a rope was tied off."],
+      ["", "The rope was let out and hauled in so often that it has worn a groove in the stone, down toward the dark."]
+    ],
+    "oil": [
+      ["", "A sack of lamp-oil flasks, each the size of a thumb. Small flasks, for a small carrier."],
+      ["", "Chalked on the wall above it, in a grown hand: FURTHER TODAY, WREN. THE ANSWER SEES YOU."]
+    ],
+    "relic": [
+      { "case": [
+        ["offered", [["", "The carved feather is dark. The tin cup has not moved."]]],
+        ["feather", [["Wren", "That is my cup. You can leave it. I do not get thirsty now."]]],
+        [null, [
+          { "set": "feather" },
+          ["", "A feather is carved into the stone, lit from within. Beside it stand a tin cup and a paper feather gone brown."],
+          ["", "And a small harness, still buckled shut, on the end of a rope that has worn through."],
+          ["", "The stone is warm. Someone is holding the other side of it."],
+          ["Wren", "Are you the one who comes to pull the rope?"],
+          ["Wren", "I asked not to go down any more. It gave me this, so I could jump the gaps. So they sent me further."],
+          ["Wren", "I cannot get back up from here. I have been trying the whole time."],
+          ["", "Wren's echo joins you. You learned the Second Jump: press A again in the air."]
+        ]]
+      ] }
+    ],
+    "chest": [
+      { "case": [
+        ["stair", [["", "The strongbox is empty. The ledger lies where you left it."]]],
+        [null, [
+          { "if": "warded",
+            "then": [["", "The wardens' strongbox sits under its two dead lamps."]],
+            "else": [
+              ["", "A strongbox sits by the wall, under two dead lamps on poles."],
+              ["", "As you reach for it, the lamps light."],
+              { "battle": "wardens" }
+            ] },
+          { "if": "warded",
+            "then": [
+              { "set": "stair" },
+              { "give": "tonic", "n": 3 },
+              ["", "Inside are three Tonics, and a ledger in a neat hand."],
+              ["", "A column of dates. Beside each date, a depth."],
+              ["", "The last line has a depth, and no date after it."],
+              ["", "You have seen this hand before. It chalked the wall above the oil."],
+              { "memory": "memory" },
+              ["", "The top of the stair, long ago. The lamps in the hall are new."],
+              ["Maren", "Arms up, love. There. Snug as a lamp in its niche."],
+              ["Wren", "I don't want to go down today."],
+              ["Maren", "I know. But you fit where we don't, and the lamps below are thirsty."],
+              ["Wren", "I asked it last night. I asked it not to send me any more."],
+              ["Maren", "And it answered you, didn't it? It gave you a feather, so you can jump the gaps."],
+              ["Maren", "It wants you to go further. Think of that. Wanted by the Answer."],
+              ["Wren", "Will you pull me up after?"],
+              ["Maren", "Same as always. Further today, Wren. The Answer sees you."],
+              { "move": "wren-then", "to": [0, -47.4], "face": [0, 1] },
+              { "move": "maren-then", "to": [0, -51], "face": [0, 1] },
+              { "wait": 0.7 },
+              { "move": "wren-then", "to": [0, -44.5], "speed": 1.6, "gone": true },
+              ["", "She pays the rope out through her hands. It runs a long way down."],
+              { "wait": 0.8 },
+              ["", "Then it stops running, and lies slack."],
+              ["Maren", "Wren?"],
+              { "wait": 1.6 },
+              ["", "She waits until the lamps burn low. Then she opens a ledger and writes a depth, in a neat hand."],
+              ["", "She does not write the date."],
+              ["Maren", "...The Answer bore him up."],
+              ["", "She says it again, and again, until it sounds like something she saw."],
+              { "wait": 0.6 },
+              { "memory": false },
+              { "if": { "all": ["feather", "!offered"] },
+                "then": [
+                  ["Wren", "That was Maren. She always gave me bread after."],
+                  ["Wren", "You jumped the gaps too, with my feather. All the way down here."],
+                  ["Wren", "Are they going to send you further now?"]
+                ] }
+            ] }
+        ]]
+      ] }
+    ],
+    "ring": [
+      ["", "A ring of pale light is set in the floor."],
+      { "choose": [["Step in", [{ "go": "brindlebrook", "at": "door" }]], ["Not yet", []]] }
+    ]
+  }
+}

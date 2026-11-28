@@ -90,7 +90,7 @@ ok(await pg.evaluate(() => { const s = window.__game.store.load(); return !!s &&
 await pg.click('#mn');
 ok(await pg.evaluate(() => window.__game.menu.open && /Tonic\s*×3/.test(document.querySelector('#menu .mbody').innerText)), 'the menu opens on the items: three tonics');
 await pg.click('#menu [data-m="party"]');
-ok(await pg.evaluate(() => document.querySelectorAll('#menu .chip').length === 3 && document.querySelectorAll('#menu img.face').length === 3), 'the party page shows the three heroes');
+ok(await pg.evaluate(() => document.querySelectorAll('#menu .chip').length === 1 && document.querySelectorAll('#menu img.face').length === 1 && /Lastmade/.test(document.querySelector('#menu .mbody').innerText)), 'the party page shows the Lastmade, alone');
 await shot('2b-menu');
 ok(await pg.evaluate(() => { const g = window.__game, h = g.field.hero, a = [h.x, h.z]; g.field.keys.ArrowUp = true; g.step(1); g.field.keys.ArrowUp = false; return h.x === a[0] && h.z === a[1]; }), 'nobody moves while it is open');
 await pg.keyboard.press('Escape');
@@ -98,7 +98,8 @@ ok(await pg.evaluate(() => !window.__game.menu.open), 'Escape closes it');
 
 // the road: a door to the other area, drawn by the other look
 ok(await use('props', 'road'), 'the road by the south gate can be used');
-await talkThrough();
+// (it forks: the pilgrim road to the cathedral, the shore road to the rock)
+await talkThrough(1);
 ok(await pg.waitForFunction(() => { const q = window.__game.info(); return q.area === 'lighthouse' && !q.busy; }, null, { timeout: 120000 }).then(() => true, () => false), 'travelled to Lighthouse rock');
 await pg.waitForTimeout(900);
 i = await info();
@@ -148,28 +149,57 @@ await ready();
 i = await info();
 ok(i.area === 'brindlebrook' && i.items.tonic === 5 && ['asked', 'moved', 'oil'].every(f => i.flags.includes(f)) && Math.abs(i.z + 52) < 3, 'Continue restores the place, the flags and the tonics');
 
-// the battle, through the door script
+// play a battle out with plain attacks; returns how many rounds it took
+const fightOut = async () => {
+  let rounds = 0;
+  for (let n = 0; n < 400; n++) {
+    const st = await pg.evaluate(() => ({ mode: window.__game.mode, phase: window.__game.battle.B.phase, menu: window.__game.battle.B.menu, round: window.__game.battle.B.round, talking: window.__game.ui.talking() }));
+    if (st.mode !== 'battle') break;
+    rounds = st.round;
+    if (st.phase === 'command') {
+      if (st.menu === 'root') await pg.click('#bcmd button[data-c="attack"]');
+      else if (st.menu === 'foe') await pg.click('#bcmd button[data-t]');
+    } else if (st.phase === 'end') {
+      await pg.click('#bcmd button');
+      await pg.waitForFunction(() => window.__game.mode !== 'battle', null, { timeout: 20000 });
+    }
+    else await pg.evaluate(() => window.__game.step(0.4));
+    await pg.waitForTimeout(15);
+  }
+  return rounds;
+};
+
+// a foe of the map: the wisp before the door comes for the leader, and is fought where they meet
 await pg.evaluate(() => window.__game.host.set('key', true));
+await pg.waitForFunction(() => !!window.__game.rigs.wisp, null, { timeout: 60000 });
+ok(await pg.evaluate(() => { const g = window.__game, w = g.field.foes.find(f => f.id === 'doorwisp'); return !!w && !w.beaten && !g.flags.wisp; }), 'a wisp hangs on the way to the door under the bluff');
+await pg.evaluate(() => { const g = window.__game; g.field.goThing(g.field.props.find(t => t.id === 'door')); });
+ok(await until('window.__game.mode === "battle"', 60), 'it comes for the leader and a fight begins');
+i = await info();
+ok(await pg.evaluate(() => { const g = window.__game; return g.battle.B.here && g.shown === g.area && g.area.id === 'brindlebrook'; }), 'it is fought in place: no arena, the village stays on screen');
+ok(await pg.waitForFunction(() => window.__game.info().phase === 'command', null, { timeout: 60000 }).then(() => true, () => false), 'the party is asked for its first command');
+{
+  const v = await pg.evaluate(() => { const g = window.__game, B = g.battle.B, nav = g.area.nav; return { tilt: g.look.viewTilt, free: B.units.every(u => !nav.blocked(u.hx, u.hz)), east: Math.min(...B.units.filter(u => u.side === 'hero').map(u => u.hx)) > Math.max(...B.units.filter(u => u.side === 'foe').map(u => u.hx)) }; });
+  ok(Math.abs(v.tilt - 0.36) < 0.03, 'the camera has come down to the battle’s view (' + v.tilt.toFixed(2) + ')');
+  ok(v.free && v.east, 'everyone stands on free ground, the party on the side the village is seen from');
+}
+await pg.waitForTimeout(200);
+await shot('7-fight-in-place');
+await fightOut();
+await pg.waitForFunction(() => window.__game.mode === 'field', null, { timeout: 20000 }).catch(() => {});
+await talkThrough();
+i = await info();
+ok(i.mode === 'field' && !i.busy && i.flags.includes('wisp'), 'won: back on the field where they stood, and the wisp is gone for good');
+ok(await pg.evaluate(() => { const g = window.__game; return Math.abs(g.look.viewTilt - 0.576) < 0.01 && document.getElementById('opts').style.display !== 'none' && g.field.foes.find(f => f.id === 'doorwisp').beaten; }), 'the field has its view and its buttons back');
+
+// the battle, through the door script
 ok(await use('props', 'door'), 'the door under the bluff can be used');
 await talkThrough();
 ok(await pg.waitForFunction(() => window.__game.info().mode === 'battle' && window.__game.info().phase === 'command', null, { timeout: 120000 }).then(() => true, () => false), 'the battle starts');
+ok(await pg.evaluate(() => !window.__game.battle.B.here && window.__game.shown !== window.__game.area), 'this one has its arena');
 await pg.waitForTimeout(300);
-await shot('7-battle');
-let rounds = 0;
-for (let n = 0; n < 400; n++) {
-  const st = await pg.evaluate(() => ({ mode: window.__game.mode, phase: window.__game.battle.B.phase, menu: window.__game.battle.B.menu, round: window.__game.battle.B.round, talking: window.__game.ui.talking() }));
-  if (st.mode !== 'battle') break;
-  rounds = st.round;
-  if (st.phase === 'command') {
-    if (st.menu === 'root') await pg.click('#bcmd button[data-c="attack"]');
-    else if (st.menu === 'foe') await pg.click('#bcmd button[data-t]');
-  } else if (st.phase === 'end') {
-    await pg.click('#bcmd button');
-    await pg.waitForFunction(() => window.__game.mode !== 'battle', null, { timeout: 20000 });
-  }
-  else await pg.evaluate(() => window.__game.step(0.4));
-  await pg.waitForTimeout(15);
-}
+await shot('8-battle');
+const rounds = await fightOut();
 await pg.waitForFunction(() => window.__game.mode === 'field' && window.__game.ui.talking(), null, { timeout: 20000 }).catch(() => {});
 i = await info();
 const won = i.flags.includes('won');
@@ -180,7 +210,41 @@ i = await info();
 ok(!i.busy && i.area === 'brindlebrook' && i.look === 'gen', 'the battle’s closing script ran and the game is free again');
 ok(await pg.evaluate(w => { const s = window.__game.store.load(); return !!s && !!s.flags.open && !!s.flags.won === w; }, won), 'the outcome was saved');
 await pg.waitForTimeout(400);
-await shot('8-after');
+await shot('9-after');
+
+// past the hall: the door now leads down the Dark Stair, an area seen side-on and no other way, with jumping
+if (won) {
+  ok(await use('props', 'door'), 'with the hall won the door can still be used');
+  await talkThrough(0);
+  ok(await pg.waitForFunction(() => { const q = window.__game.info(); return q.area === 'darkstair' && !q.busy; }, null, { timeout: 120000 }).then(() => true, () => false), 'it leads down to the Dark Stair');
+  await pg.waitForTimeout(800);
+  ok(await pg.evaluate(() => { const g = window.__game; return !!g.look.strip && !!g.look.hd && document.getElementById('hd').hidden && document.getElementById('pad').classList.contains('on') && g.field.jumps; }), 'which is side-on at once, the stick and buttons on the picture and no view button');
+  await pg.keyboard.press(' ');
+  ok(await until('window.__game.field.hero.air', 2), 'the space bar jumps there');
+  ok(await until('!window.__game.field.hero.air && window.__game.field.hero.y === 2', 3), 'and the leader comes down again');
+  // a slab over the chasm is where its ledge is, moving
+  const a0 = await pg.evaluate(() => window.__game.field.plat.ledges[0].z0);
+  await pg.evaluate(() => window.__game.step(1));
+  ok(Math.abs((await pg.evaluate(() => window.__game.field.plat.ledges[0].z0)) - a0) > 0.5, 'the slabs over the chasm glide');
+  await shot('10-dark-stair');
+  ok(await use('props', 'up'), 'the stair up can be used');
+  await talkThrough(0);
+  ok(await pg.waitForFunction(() => { const q = window.__game.info(); return q.area === 'brindlebrook' && !q.busy; }, null, { timeout: 60000 }).then(() => true, () => false), 'and leads back to the village');
+  await pg.waitForTimeout(600);
+  ok(await pg.evaluate(() => { const g = window.__game; return !g.look.strip && !g.look.hd && !document.getElementById('hd').hidden && !document.getElementById('pad').classList.contains('on'); }), 'where the view is the one it was left in');
+}
+// the other fork of the road: the cathedral, a second area seen side-on only, with no jumping
+ok(await use('props', 'road'), 'the road again');
+await talkThrough(0);
+ok(await pg.waitForFunction(() => { const q = window.__game.info(); return q.area === 'cathedral' && !q.busy; }, null, { timeout: 120000 }).then(() => true, () => false), 'the pilgrim road leads to the cathedral');
+await pg.waitForTimeout(800);
+ok(await pg.evaluate(() => { const g = window.__game; return !!g.look.strip && !!g.look.hd && document.getElementById('hd').hidden && !g.field.jumps && document.title === 'Underhymn'; }), 'it is side-on, without jumping');
+ok(await use('actors', 'verger'), 'the verger can be spoken to');
+await talkThrough();
+await shot('11-cathedral');
+ok(await use('props', 'out'), 'the south door can be used');
+await talkThrough(0);
+ok(await pg.waitForFunction(() => { const q = window.__game.info(); return q.area === 'brindlebrook' && !q.busy; }, null, { timeout: 60000 }).then(() => true, () => false), 'and leads back down to the village');
 ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 4).join(' | ') : ''));
 await br.close();
 process.exit(failed ? 1 : 0);
